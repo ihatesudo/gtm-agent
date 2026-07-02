@@ -1,4 +1,4 @@
-.PHONY: setup hello interact clean help
+.PHONY: setup hello interact agent clean help
 
 # Default: show available targets
 help:
@@ -6,6 +6,7 @@ help:
 	@echo "  setup    Install/sync dependencies via uv"
 	@echo "  hello    Run hello.py (generate_content)"
 	@echo "  interact Run interact.py (Interactions API)"
+	@echo "  agent    Run the LangGraph marketing agent (interactive REPL)"
 	@echo "  clean    Remove the venv and build artifacts"
 
 # Always run scripts through `uv run` so the project venv (google-genai>=2.10)
@@ -19,6 +20,9 @@ hello:
 
 interact:
 	uv run python interact.py
+
+agent:
+	uv run python -m marketing_agent
 
 clean:
 	rm -rf .venv
