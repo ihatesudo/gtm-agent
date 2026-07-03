@@ -40,8 +40,13 @@ SYSTEM_PROMPT = """你是一名资深增长营销官（Head of Growth），拥�
 """
 
 
-def build_model() -> ChatGoogleGenerativeAI:
-    """构造 Gemini 聊天模型。复用环境变量 GEMINI_API_KEY。"""
+def build_model(include_thoughts: bool = True) -> ChatGoogleGenerativeAI:
+    """构造 Gemini 聊天模型。复用环境变量 GEMINI_API_KEY。
+
+    include_thoughts=True 时，模型会产出可读的推理（思考）过程，
+    配合 CLI 的流式输出即可看到 thinking 逐 token 涌现；
+    关闭后模型不再返回思考块，只输出最终答案。
+    """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -51,17 +56,22 @@ def build_model() -> ChatGoogleGenerativeAI:
         model="gemini-3.5-flash",
         temperature=0.7,  # 营销场景需要一点创造力
         google_api_key=api_key,
+        include_thoughts=include_thoughts,  # Gemini 3+ 的思考摘要开关
     )
 
 
-def build_agent():
-    """构造并返回编译好的 LangGraph ReAct agent。"""
+def build_agent(include_thoughts: bool = True):
+    """构造并返回编译好的 LangGraph ReAct agent。
+
+    include_thoughts 决定底层模型是否返回思考过程；切换时重新构造即可，
+    不必重启进程。
+    """
     return create_react_agent(
-        model=build_model(),
+        model=build_model(include_thoughts=include_thoughts),
         tools=ALL_TOOLS,
         prompt=SYSTEM_PROMPT,
     )
 
 
-# 便于直接 `python -m marketing_agent` 复用的单例
-agent = build_agent()
+# 便于直接 `python -m marketing_agent` 复用的单例（默认开启思考）
+agent = build_agent(include_thoughts=True)
