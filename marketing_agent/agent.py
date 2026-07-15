@@ -1,8 +1,9 @@
-"""基于 LangGraph 的营销 agent。
+"""LangGraph-based marketing agent.
 
-高层方案：langgraph.prebuilt.create_react_agent（内置 ReAct 循环、工具调用、
-消息状态管理），底层模型用 ChatGoogleGenerativeAI（gemini-3.5-flash，复用
-环境变量里的 GEMINI_API_KEY），挂载 marketing_agent.tools 里的真实工具。
+High-level approach: langgraph.prebuilt.create_react_agent (provides a built-in
+ReAct loop, tool calling, and message-state management). The underlying model is
+ChatGoogleGenerativeAI (gemini-3.5-flash, reusing GEMINI_API_KEY from the
+environment), wired up with the real tools defined in marketing_agent.tools.
 """
 
 from __future__ import annotations
@@ -41,30 +42,32 @@ SYSTEM_PROMPT = """你是一名资深增长营销官（Head of Growth），拥�
 
 
 def build_model(include_thoughts: bool = True) -> ChatGoogleGenerativeAI:
-    """构造 Gemini 聊天模型。复用环境变量 GEMINI_API_KEY。
+    """Build the Gemini chat model. Reuses the GEMINI_API_KEY env var.
 
-    include_thoughts=True 时，模型会产出可读的推理（思考）过程，
-    配合 CLI 的流式输出即可看到 thinking 逐 token 涌现；
-    关闭后模型不再返回思考块，只输出最终答案。
+    When include_thoughts=True the model emits a human-readable reasoning
+    (thinking) trace; combined with the CLI's streaming output you can watch
+    the thinking tokens appear one by one. When disabled, the model no longer
+    returns thinking blocks and only outputs the final answer.
     """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "缺少 GEMINI_API_KEY 环境变量。请先 `source env.sh`。"
+            "GEMINI_API_KEY environment variable is missing. Run `source env.sh` first."
         )
     return ChatGoogleGenerativeAI(
         model="gemini-3.5-flash",
-        temperature=0.7,  # 营销场景需要一点创造力
+        temperature=0.7,  # marketing benefits from a bit of creativity
         google_api_key=api_key,
-        include_thoughts=include_thoughts,  # Gemini 3+ 的思考摘要开关
+        include_thoughts=include_thoughts,  # Gemini 3+ thinking-summary toggle
     )
 
 
 def build_agent(include_thoughts: bool = True):
-    """构造并返回编译好的 LangGraph ReAct agent。
+    """Build and return the compiled LangGraph ReAct agent.
 
-    include_thoughts 决定底层模型是否返回思考过程；切换时重新构造即可，
-    不必重启进程。
+    include_thoughts controls whether the underlying model returns its thinking
+    process. To toggle it, just rebuild the agent — no need to restart the
+    process.
     """
     return create_react_agent(
         model=build_model(include_thoughts=include_thoughts),
@@ -73,5 +76,5 @@ def build_agent(include_thoughts: bool = True):
     )
 
 
-# 便于直接 `python -m marketing_agent` 复用的单例（默认开启思考）
+# Singleton (thinking on by default) for convenient reuse via `python -m marketing_agent`
 agent = build_agent(include_thoughts=True)

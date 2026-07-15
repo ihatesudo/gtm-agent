@@ -1,4 +1,4 @@
-"""基于 LangGraph + Gemini 的营销 agent。"""
+"""Marketing agent built on LangGraph + Gemini."""
 
 from .agent import build_agent, agent, SYSTEM_PROMPT
 
