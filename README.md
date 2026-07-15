@@ -3,6 +3,9 @@
 **English** · [简体中文](README.zh-CN.md)
 
 > **One AI that doesn't try to do everything badly — it runs a whole marketing team.**
+> And it plugs straight into the 150+ marketing tools you already pay for.
+
+[**→ Try it in 60 seconds**](#quick-start) · [**→ See real output**](#see-real-output) · [**→ Browse the 150+ integrations**](#plugs-into-your-stack) · [**→ Meet the team**](#meet-the-team)
 
 Most marketing AIs are a single generalist: ask it about SEO and it's okay, ask it
 about paid ads and it's okay, ask it to write the launch email and it's… okay. The
@@ -12,11 +15,14 @@ This project takes a different bet. Instead of one person faking every job, the
 agent is structured as a **real marketing org**: a Growth Lead who directs, and six
 specialists — search, social, SEO, B2B, lifecycle, and more — each with their own
 voice, instincts, playbook, and toolkit. You talk to the team the way you'd brief an
-agency: tell them the goal, and the right specialist picks it up.
+agency: tell them the goal, and the right specialist picks it up — then hands off to
+the platform tools that actually execute.
 
 It's built for founders, marketers, and growth teams who want expert-level thinking
 on tap — strategy, copy, campaigns, SEO, lifecycle flows — without paying seven
 salaries or copy-pasting out of a chat window.
+
+> **Stop briefing a chatbot. Start commanding a team.** ↓
 
 ---
 
@@ -58,6 +64,132 @@ instead of "it depends."
 
 ---
 
+## Plugs into your stack
+
+This is where most "marketing AI" stops at copy. **This one ships a real toolkit:**
+**64 ready-to-run CLIs** + **90+ integration guides**, covering 150+ of the platforms
+real marketers live in — Google Ads, Klaviyo, GA4, Ahrefs, HubSpot, Apollo, and the
+rest. The agent reads the how-to on demand and, where you've added a key, can drive
+the tool itself. No vendor lock-in, no walled garden.
+
+> 💡 **Everything below is in the repo today** — `tools/clis/` for zero-dependency
+> scripts you can run right now, `tools/integrations/` for the full reference library.
+
+Every CLI follows the same shape — `{tool} <resource> <action> [options]`, JSON to
+stdout, keys read from env vars. So once you've seen one, you've seen them all.
+Full source of truth: [`tools/clis/README.md`](./tools/clis/README.md). The complete
+inventory, organized by category:
+
+### 💰 Ads
+
+| Category | Tool |
+|---|---|
+| Ads | [Google Ads](https://ads.google.com) |
+| Ads | [LinkedIn Ads](https://business.linkedin.com/marketing-solutions/ads) |
+| Ads | [Meta Ads](https://www.facebook.com/business/ads) |
+| Ads | [TikTok Ads](https://ads.tiktok.com) |
+
+### 🔍 SEO
+
+| Category | Tool |
+|---|---|
+| SEO | [Ahrefs](https://ahrefs.com) |
+| SEO | [DataForSEO](https://dataforseo.com) |
+| SEO | [Google Search Console](https://search.google.com/search-console) |
+| SEO | [Keywords Everywhere](https://keywordseverywhere.com) |
+| SEO | [SEMrush](https://semrush.com) |
+
+### ✉️ Email & SMS
+
+| Category | Tool |
+|---|---|
+| Email/CRM | [ActiveCampaign](https://activecampaign.com) |
+| Email/SMS | [Brevo](https://brevo.com) |
+| Email | [Customer.io](https://customer.io) |
+| Email | [Kit](https://kit.com) |
+| Email/SMS | [Klaviyo](https://klaviyo.com) |
+| Email | [Mailchimp](https://mailchimp.com) |
+| Email | [Postmark](https://postmarkapp.com) |
+| Email | [Resend](https://resend.com) |
+| Email | [SendGrid](https://sendgrid.com) |
+| Newsletter | [Beehiiv](https://beehiiv.com) |
+| Push | [OneSignal](https://onesignal.com) |
+
+### 📊 Analytics
+
+| Category | Tool |
+|---|---|
+| Analytics | [Adobe Analytics](https://business.adobe.com/products/analytics) |
+| Analytics | [Amplitude](https://amplitude.com) |
+| Analytics | [Google Analytics 4](https://analytics.google.com) |
+| Analytics | [Mixpanel](https://mixpanel.com) |
+| Analytics | [Plausible](https://plausible.io) |
+| Analytics | [Segment](https://segment.com) |
+| CRO | [Hotjar](https://hotjar.com) |
+| A/B Testing | [Optimizely](https://optimizely.com) |
+
+### 🤝 CRM, Messaging & Lifecycle
+
+| Category | Tool |
+|---|---|
+| Messaging | [Intercom](https://intercom.com) |
+
+### 🎯 Outbound & Enrichment
+
+| Category | Tool |
+|---|---|
+| Data Enrichment | [Apollo.io](https://apollo.io) |
+| Data Enrichment | [Clearbit](https://clearbit.com) |
+| Email Outreach | [Hunter.io](https://hunter.io) |
+| Email Outreach | [Instantly.ai](https://instantly.ai) |
+| Email Outreach | [Lemlist](https://lemlist.com) |
+| Email Outreach | [Snov.io](https://snov.io) |
+
+### ⭐ Reviews & Social
+
+| Category | Tool |
+|---|---|
+| Social | [Buffer](https://buffer.com) |
+| Reviews | [G2](https://g2.com) |
+| Reviews | [Trustpilot](https://trustpilot.com) |
+
+### 🎥 Webinar, Video & Forms
+
+| Category | Tool |
+|---|---|
+| Webinar | [Demio](https://demio.com) |
+| Webinar | [Livestorm](https://livestorm.co) |
+| Video | [Wistia](https://wistia.com) |
+| Forms | [Typeform](https://typeform.com) |
+| Scheduling | [Calendly](https://calendly.com) |
+| Scheduling | [SavvyCal](https://savvycal.com) |
+
+### 💳 Payments, Referral & Affiliate
+
+| Category | Tool |
+|---|---|
+| Payments | [Paddle](https://paddle.com) |
+| Affiliate | [PartnerStack](https://partnerstack.com) |
+| Referral | [Mention Me](https://www.mention-me.com) |
+| Referral | [Rewardful](https://www.getrewardful.com) |
+| Referral | [Tolt](https://tolt.io) |
+
+### 🔗 Links, Search & Automation
+
+| Category | Tool |
+|---|---|
+| Links | [Dub.co](https://dub.co) |
+| AI Search | [Exa](https://exa.ai) |
+| Automation | [Zapier](https://zapier.com) |
+
+…plus 90+ integration guides in [`tools/REGISTRY.md`](./tools/REGISTRY.md) — HubSpot,
+Salesforce, Stripe, Shopify, Twilio, PostHog, Clay, ZoomInfo, and more — loaded on
+demand whenever the agent needs the playbook.
+
+→ **Browse the live menus:** `make roles` · `make skills` · [`tools/clis/README.md`](./tools/clis/README.md)
+
+---
+
 ## Meet the team
 
 | Role | Lives for |
@@ -91,15 +223,24 @@ opinionated, ready-to-use documents — the kind of thing you'd otherwise wait d
 for from an agency, produced in a single prompt. See [`output/README.md`](./output/README.md)
 for the bilingual gallery index.
 
+→ **Want your own?** Run `make run` and paste a brief. The first deliverable lands
+in `output/` within minutes.
+
 ---
 
 ## Quick start
 
+**Three commands to your first deliverable.** Seriously.
+
 ```bash
 make setup     # uv sync — install dependencies
 make auth      # one-time: gcloud application-default login (enables Vertex AI)
-make run       # interactive REPL
+make run       # interactive REPL — you're talking to the team
 ```
+
+> 👉 **New here?** Run `make run`, then type a real brief —
+> *"我的 SaaS 要在北美做冷启动，给我 90 天获客计划"* — and watch the Director
+> route it. Or jump straight to a specialist: `make role NAME=paid-search MSG="..."`.
 
 Auth is one of two paths (auto-selected by `GENAI_PROVIDER`):
 
@@ -195,3 +336,13 @@ thinking behind what's built so far.
 ```bash
 make clean     # remove .venv and build artifacts
 ```
+
+---
+
+## Ready to put a marketing team in your terminal?
+
+**[→ Get started in 60 seconds](#quick-start)** · **[→ See what it produces](#see-real-output)** · **[→ Explore 150+ integrations](#plugs-into-your-stack)**
+
+Founders, marketers, and growth teams use this to ship agency-grade work without the
+agency. Star ⭐ the repo if it saves you a week — contributions, new roles, and new
+playbooks all welcome.
