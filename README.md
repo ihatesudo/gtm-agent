@@ -98,6 +98,7 @@ inventory, organized by category:
 | SEO | [Google Search Console](https://search.google.com/search-console) |
 | SEO | [Keywords Everywhere](https://keywordseverywhere.com) |
 | SEO | [SEMrush](https://semrush.com) |
+| SEO | [RankParse](https://rankparse.com) |
 
 ### ✉️ Email & SMS
 
@@ -125,6 +126,8 @@ inventory, organized by category:
 | Analytics | [Mixpanel](https://mixpanel.com) |
 | Analytics | [Plausible](https://plausible.io) |
 | Analytics | [Segment](https://segment.com) |
+| Product Analytics | [Pendo](https://pendo.io) |
+| Competitive Intelligence | [SimilarWeb](https://similarweb.com) |
 | CRO | [Hotjar](https://hotjar.com) |
 | A/B Testing | [Optimizely](https://optimizely.com) |
 
@@ -133,6 +136,8 @@ inventory, organized by category:
 | Category | Tool |
 |---|---|
 | Messaging | [Intercom](https://intercom.com) |
+| CRM | [Close](https://close.com) |
+| Sales Engagement | [Outreach](https://outreach.io) |
 
 ### 🎯 Outbound & Enrichment
 
@@ -140,10 +145,14 @@ inventory, organized by category:
 |---|---|
 | Data Enrichment | [Apollo.io](https://apollo.io) |
 | Data Enrichment | [Clearbit](https://clearbit.com) |
+| Data Enrichment | [Clay](https://clay.com) |
+| Data Enrichment | [ZoomInfo](https://zoominfo.com) |
 | Email Outreach | [Hunter.io](https://hunter.io) |
 | Email Outreach | [Instantly.ai](https://instantly.ai) |
 | Email Outreach | [Lemlist](https://lemlist.com) |
 | Email Outreach | [Snov.io](https://snov.io) |
+| Partnerships | [Crossbeam](https://crossbeam.com) |
+| Developer Prospecting | [GitHub Prospects](https://github.com) |
 
 ### ⭐ Reviews & Social
 
@@ -181,6 +190,14 @@ inventory, organized by category:
 | Links | [Dub.co](https://dub.co) |
 | AI Search | [Exa](https://exa.ai) |
 | Automation | [Zapier](https://zapier.com) |
+| Data Integration | [Coupler](https://coupler.io) |
+| Reporting | [Supermetrics](https://supermetrics.com) |
+
+### 🤖 AI & Content
+
+| Category | Tool |
+|---|---|
+| AI Content | [AirOps](https://airops.com) |
 
 …plus 90+ integration guides in [`tools/REGISTRY.md`](./tools/REGISTRY.md) — HubSpot,
 Salesforce, Stripe, Shopify, Twilio, PostHog, Clay, ZoomInfo, and more — loaded on
