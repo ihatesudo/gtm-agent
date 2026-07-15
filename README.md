@@ -1,5 +1,7 @@
 # Marketing Agent
 
+**English** · [简体中文](README.zh-CN.md)
+
 > **One AI that doesn't try to do everything badly — it runs a whole marketing team.**
 
 Most marketing AIs are a single generalist: ask it about SEO and it's okay, ask it
@@ -69,6 +71,25 @@ instead of "it depends."
 
 Switch into any of them mid-conversation — `--role seo`, then `/role social-ads` —
 and the agent picks up that specialist's voice for the next task.
+
+---
+
+## See real output
+
+Don't take the feature list on faith — the [`output/`](./output) folder holds
+**unedited deliverables from actual runs**. Two examples worth reading in full:
+
+- 📊 **[Kimi Code vs. MiniMax — growth strategy deep-dive](./output/kimi-vs-minimax-coding-growth-analysis.md)**
+  — a Director-level competitive analysis: positioning, audiences, mindshare, and
+  go-to-market playbooks, with comparison tables and concrete recommendations.
+- 🌱 **[TikTok viral gardening products — growth guide](./output/tiktok-viral-gardening-products-guide.md)**
+  — a social-ads specialist's category teardown: market insight, content formulas,
+  and an e-commerce conversion path, thinking natively in the channel.
+
+**The impact:** these aren't bullet-point summaries. They're structured,
+opinionated, ready-to-use documents — the kind of thing you'd otherwise wait days
+for from an agency, produced in a single prompt. See [`output/README.md`](./output/README.md)
+for the bilingual gallery index.
 
 ---
 
