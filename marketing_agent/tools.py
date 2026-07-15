@@ -89,5 +89,84 @@ def list_assets() -> str:
     return "\n".join(files)
 
 
+# --- Skill & tool-reference tools -----------------------------------------
+# These let the agent pull in a deeper playbook or platform-integration guide
+# on demand. The selected skill's main SKILL.md is already injected into the
+# system prompt; use these when the skill points you to a references/ file or
+# when you need how-to details for a specific marketing platform.
+
+@tool
+def list_skills() -> str:
+    """List every available marketing skill by name.
+
+    Each line is `name — short description`. Useful to discover what playbooks
+    exist before asking the user, or to confirm a skill name. The active skill's
+    playbook is already loaded into context, so you usually only call this to
+    explore alternatives.
+
+    Returns:
+        A newline-separated list of skill names and one-line summaries.
+    """
+    from . import skills_loader
+
+    lines = [
+        f"{s.name} — {skills_loader.short_description(s.description)}"
+        for s in skills_loader.list_skills()
+    ]
+    return "\n".join(lines) if lines else "(no skills installed)"
+
+
+@tool
+def read_skill_reference(skill_name: str, filename: str) -> str:
+    """Read a deeper playbook file for a skill.
+
+    A skill's SKILL.md often links to files under its references/ folder (e.g.
+    `references/b2b-paid-playbook.md`). Call this to load one of those deeper
+    playbooks when the top-level skill guidance points you to it. Pass the bare
+    filename only (no path); the reference must belong to the named skill.
+
+    Args:
+        skill_name: The skill whose reference to read (e.g. "ads").
+        filename: A bare filename from that skill's references/ folder.
+    """
+    from . import skills_loader
+
+    try:
+        return skills_loader.load_skill_reference(skill_name, filename)
+    except KeyError:
+        avail = skills_loader.list_skill_references(skill_name) or skills_loader.list_skills()
+        hint = "Available references: " + ", ".join(
+            skills_loader.list_skill_references(skill_name)
+        ) if skills_loader.find_skill(skill_name) else "Unknown skill."
+        return f"[Unknown skill: {skill_name!r}. {hint}]"
+    except FileNotFoundError as exc:
+        avail = skills_loader.list_skill_references(skill_name)
+        hint = "Available: " + ", ".join(avail) if avail else ""
+        return f"[{exc}. {hint}]"
+
+
+@tool
+def read_tool_guide(filename: str) -> str:
+    """Read a marketing-platform integration guide.
+
+    The tools/integrations folder holds how-to guides for platforms like
+    klaviyo, ahrefs, meta-ads, hubspot, etc. Call this when you need details on
+    how a platform is set up or integrated. Pass a bare filename (with the .md
+    suffix), e.g. "klaviyo.md". This returns reference text only — it does not
+    execute the JS CLI wrappers.
+
+    Args:
+        filename: A bare filename from tools/integrations, e.g. "ahrefs.md".
+    """
+    from . import skills_loader
+
+    try:
+        return skills_loader.load_tool_guide(filename)
+    except FileNotFoundError as exc:
+        avail = skills_loader.list_tool_guides()
+        hint = "Available guides: " + ", ".join(avail[:25]) + (" …" if len(avail) > 25 else "")
+        return f"[{exc}. {hint}]"
+
+
 # Exported for the agent to use.
-ALL_TOOLS = [web_search, save_asset, read_asset, list_assets]
+ALL_TOOLS = [web_search, save_asset, read_asset, list_assets, list_skills, read_skill_reference, read_tool_guide]
