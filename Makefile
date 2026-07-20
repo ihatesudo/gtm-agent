@@ -22,7 +22,7 @@ LOCAL_PORT ?= 3001
 # manually `set -a; source .env; set +a` before each command.
 ENV_LOAD := set -a && { [ -f .env ] && . ./.env; }; set +a
 
-.PHONY: help setup auth env run web web-auth-local deploy release release-check release-deps release-build release-login release-project release-secrets appwrite-platform hosting-check hosting-build web-auth-test appwrite-login appwrite-init appwrite-auth-check appwrite-deploy deploy-static agent ask role skill menu roles skills clean
+.PHONY: help setup auth env run web web-auth-local deploy release release-check release-deps release-build release-login release-project release-secrets appwrite-platform hosting-check hosting-build hosting-auth-artifact-check web-auth-test appwrite-login appwrite-init appwrite-auth-check appwrite-deploy deploy-static agent ask role skill menu roles skills clean
 
 help: ## Show this help
 	@echo "Usage: make <target>  (extra args: MSG=\"...\" NAME=<role|skill>)"
@@ -39,6 +39,7 @@ help: ## Show this help
 	@echo "Appwrite Sites + Render (recommended):"
 	@echo "  hosting-check   Check the backend and site URLs required for a static build"
 	@echo "  hosting-build   Build the static frontend for Appwrite Sites"
+	@echo "  hosting-auth-artifact-check  Verify the built Magic Link browser bridge"
 	@echo "  web-auth-test   Run Magic Link deployment regression checks"
 	@echo "  appwrite-login  Sign in to the Appwrite CLI"
 	@echo "  appwrite-init   Create the Appwrite Sites CLI config (run once)"
@@ -102,7 +103,12 @@ hosting-check: ## Validate Appwrite and public URLs for the Appwrite Sites stati
 
 hosting-build: hosting-check ## Export the static Reflex frontend for Appwrite Sites
 	@APPWRITE_ENDPOINT="$(APPWRITE_ENDPOINT)" APPWRITE_PROJECT_ID="$(APPWRITE_PROJECT_ID)" REFLEX_API_URL="$(BACKEND_URL)" REFLEX_DEPLOY_URL="$(SITE_URL)" $(REFLEX) export --frontend-only --no-zip --env prod
+	@$(MAKE) hosting-auth-artifact-check
 	@echo "Static site is ready in .web/build/client."
+
+hosting-auth-artifact-check: ## Verify the exported frontend waits for the Appwrite auth bridge
+	@rg -q 'window.GTMAuth = \{' .web/build/client || { echo "Missing Appwrite auth bridge in static build."; exit 2; }
+	@rg -q 'while \(!window.GTMAuth\)' .web/build/client || { echo "Static build does not wait for the Appwrite auth bridge."; exit 2; }
 
 web-auth-test: ## Run regression checks for the static Appwrite Magic Link flow
 	@$(PY) -m unittest discover -s tests -p 'test_*.py'
