@@ -7,7 +7,7 @@ PY := uv run python
 # manually `set -a; source .env; set +a` before each command.
 ENV_LOAD := set -a && { [ -f .env ] && . ./.env; }; set +a
 
-.PHONY: help setup auth env run agent ask role skill menu roles skills clean
+.PHONY: help setup auth env run web deploy agent ask role skill menu roles skills clean
 
 help: ## Show this help
 	@echo "Usage: make <target>  (extra args: MSG=\"...\" NAME=<role|skill>)"
@@ -18,6 +18,8 @@ help: ## Show this help
 	@echo ""
 	@echo "Running the agent:"
 	@echo "  run       Interactive REPL (role/skill menu + /commands)"
+	@echo "  web       Run the deployable Reflex web app locally"
+	@echo "  deploy    Deploy the Reflex app (after reflex login)"
 	@echo "  agent     Alias for 'run'"
 	@echo "  ask       One-shot task:           make ask MSG=\"write 3 headlines\""
 	@echo "  role      One-shot as a role:      make role NAME=seo MSG=\"...\""
@@ -47,6 +49,12 @@ env: ## Print active Gemini/Google env vars (masked)
 
 run agent: ## Interactive REPL
 	@$(ENV_LOAD); $(PY) -m marketing_agent
+
+web: ## Run the Reflex web app locally
+	@$(ENV_LOAD); uv run reflex run
+
+deploy: ## Deploy the Reflex app to Reflex Cloud
+	@$(ENV_LOAD); uv run reflex deploy
 
 ask: ## One-shot task: make ask MSG="..."
 	@$(ENV_LOAD); $(PY) -m marketing_agent "$(MSG)"

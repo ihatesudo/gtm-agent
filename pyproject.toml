@@ -13,4 +13,5 @@ dependencies = [
     "duckduckgo-search>=6.0.0",
     "ddgs>=9.14.4",
     "pyyaml>=6.0",
+    "reflex>=0.8.0",
 ]

@@ -255,6 +255,24 @@ make auth      # one-time: gcloud application-default login (enables Vertex AI)
 make run       # interactive REPL — you're talking to the team
 ```
 
+### Web app with passwordless login
+
+The Reflex app is available through `make web`. It uses Appwrite Magic URL
+authentication: users enter an email address and receive a one-time sign-in
+link. There is no Google OAuth app, password database, or custom domain needed.
+
+1. Create a free Appwrite Cloud project and add a **Web** platform for
+   `localhost` while developing. After deployment, add the hostname printed by
+   Reflex Cloud (for example `your-app.reflex.run`).
+2. Copy `.env.example` to `.env` and set `APPWRITE_ENDPOINT` and
+   `APPWRITE_PROJECT_ID` from the Appwrite console. These are public client
+   configuration values; never add an Appwrite API key.
+3. Run `make web`. Deploy with `make deploy` after logging in to Reflex Cloud.
+
+The `/auth/callback` route validates the Appwrite browser JWT again on the
+Python server before granting agent access. The Node integration CLIs remain
+server-side repository tools and are not executable from the browser.
+
 > 👉 **New here?** Run `make run`, then type a real brief —
 > *"我的 SaaS 要在北美做冷启动，给我 90 天获客计划"* — and watch the Director
 > route it. Or jump straight to a specialist: `make role NAME=paid-search MSG="..."`.
