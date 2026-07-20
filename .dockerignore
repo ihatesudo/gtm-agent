@@ -1,0 +1,13 @@
+.git
+.venv
+.web
+.states
+__pycache__
+*.py[cod]
+.env
+.env.*
+!/.env.example
+!/.env.sample
+output
+dist
+build

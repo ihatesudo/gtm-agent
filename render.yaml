@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: marketing-agent-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /ping
+    envVars:
+      - key: GENAI_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openrouter/auto
+      - key: OPENROUTER_SITE_URL
+        sync: false
+      - key: APPWRITE_ENDPOINT
+        sync: false
+      - key: APPWRITE_PROJECT_ID
+        sync: false
+      # Set this after Appwrite gives the site a URL. It permits the site's
+      # browser WebSocket connection to the Reflex backend.
+      - key: REFLEX_CORS_ALLOWED_ORIGINS
+        sync: false

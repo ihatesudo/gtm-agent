@@ -271,57 +271,77 @@ authentication: users enter an email address and receive a one-time sign-in
 link. There is no Google OAuth app, password database, or custom domain needed.
 
 1. Create a free Appwrite Cloud project and add a **Web** platform for
-   `localhost` while developing. After deployment, add the hostname printed by
-   Reflex Cloud (for example `your-app.reflex.run`).
+   `localhost` while developing. After deployment, add the Appwrite Sites
+   hostname (not the Render API hostname) as another Web platform.
 2. Copy `.env.example` to `.env` and set `APPWRITE_ENDPOINT` and
    `APPWRITE_PROJECT_ID` from the Appwrite console. These are public client
    configuration values; never add an Appwrite API key.
-3. Run `make web`. Deploy with `make deploy` after logging in to Reflex Cloud.
+3. Run `make web`. For the free hosting layout, deploy the static frontend to
+   Appwrite Sites and the Reflex Python backend to Render as described below.
 
 The `/auth/callback` route validates the Appwrite browser JWT again on the
 Python server before granting agent access. The Node integration CLIs remain
 server-side repository tools and are not executable from the browser.
 
-### Production release
+### Production release: Appwrite Sites + Render
 
-Follow this order once. You do **not** need to own a domain.
+This is the recommended low-cost setup. Appwrite Sites hosts the compiled
+Reflex frontend; Render hosts only the Python/WebSocket backend; Appwrite still
+owns passwordless login. You do **not** need a custom domain.
 
-1. Create a free Appwrite Cloud project. Add `localhost` as a Web platform for
-   local testing, then copy its **Endpoint** (ending in `/v1`) and **Project ID**.
-2. Create an OpenRouter API key with a spending limit.
-3. Create the production env file and fill in those four values:
-
-   ```bash
-   cp .env.sample .env.production
-   ```
-
-4. Sign in to Reflex Cloud once; this opens a browser login:
-
-   ```bash
-   make release-login
-   ```
-
-5. Deploy the app:
-
-   ```bash
-   make release
-   ```
-
-   This validates `.env.production`, builds the Reflex app, and securely uploads
-   the values as Reflex Cloud environment variables. It then prints the live app
-   URL.
-6. Register that live hostname in Appwrite as a second **Web** platform. This
-   enables the browser to request Magic URLs from your deployed app:
-
-```bash
-make appwrite-platform APP_URL=https://your-app.reflex.run
+```text
+Browser → Appwrite Sites (static Reflex UI) → Render (Reflex events/WebSocket)
+             └────────────────────────────→ Appwrite Magic URL auth
 ```
 
-7. Open the deployed URL, enter an email address, and use the received sign-in
-   link to verify the login flow.
+1. In Appwrite Cloud, create the project and add `localhost` as a Web platform.
+   Copy the endpoint (ending in `/v1`) and project ID. Do not create an API key.
+2. Create an **Appwrite Site** in the Console as a static site. Its generated
+   `*.appwrite.network` URL is enough. Add that hostname as a second **Web**
+   platform in the same Appwrite project; this allows the Magic Link callback.
+3. Push this repository to GitHub and create a Render service from the included
+   [`render.yaml`](./render.yaml). Select the Free plan. In Render's Environment
+   page set these values: `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`,
+   `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, and
+   `REFLEX_CORS_ALLOWED_ORIGINS=https://your-site.appwrite.network`.
+   The file starts the backend with the included [`Dockerfile`](./Dockerfile);
+   no Reflex Cloud account is involved.
+4. When Render has deployed, copy its `https://…onrender.com` URL and build the
+   static frontend with both public URLs:
 
-For later changes to OpenRouter or Appwrite values, edit `.env.production` and
-run `make release-secrets`.
+   ```bash
+   make hosting-build \
+     BACKEND_URL=https://your-api.onrender.com \
+     SITE_URL=https://your-site.appwrite.network
+   ```
+
+   This embeds the Render API/WebSocket URL into the exported frontend at
+   `.web/build/client`.
+5. Install the Appwrite CLI once, sign in, and initialise the Site config. When
+   prompted for the output directory/path, use `.web/build/client`.
+
+   ```bash
+   npm install -g appwrite-cli
+   make appwrite-login
+   make appwrite-init
+   ```
+
+6. Deploy the static site. Pass the same URLs again because every frontend build
+   must target the intended Render backend:
+
+   ```bash
+   make appwrite-deploy \
+     BACKEND_URL=https://your-api.onrender.com \
+     SITE_URL=https://your-site.appwrite.network
+   ```
+
+7. Open the Appwrite Site URL and complete a Magic Link sign-in. On Render Free,
+   the backend sleeps after inactivity, so the first visit can take roughly a
+   minute before the UI connects. Later deployments use the same two commands:
+   `make hosting-build …` and `make appwrite-deploy …`.
+
+The older `make release` targets remain available for Reflex Cloud, but they are
+not used by this Appwrite + Render architecture.
 
 > 👉 **New here?** Run `make run`, then type a real brief —
 > *"我的 SaaS 要在北美做冷启动，给我 90 天获客计划"* — and watch the Director

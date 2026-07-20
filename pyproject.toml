@@ -16,3 +16,8 @@ dependencies = [
     "pyyaml>=6.0",
     "reflex>=0.8.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pip>=26.1.2",
+]
