@@ -53,6 +53,7 @@ class MarketingState(rx.State):
     prompt: str = ""
     active_role: str = DIRECTOR
     active_skill: str = ""
+    language: str = "zh"
     messages: list[tuple[str, str]] = []
     activity: list[str] = []
     is_running: bool = False
@@ -82,6 +83,10 @@ class MarketingState(rx.State):
     def skill_label(self) -> str:
         return self.active_skill or "No playbook"
 
+    @rx.var
+    def language_label(self) -> str:
+        return "中文" if self.language == "zh" else "English"
+
     @rx.event
     def clear_chat(self) -> None:
         if not self.is_running:
@@ -96,6 +101,10 @@ class MarketingState(rx.State):
     @rx.event
     def set_skill(self, skill: str) -> None:
         self.active_skill = skill
+
+    @rx.event
+    def set_language(self, language: str) -> None:
+        self.language = "en" if language == "en" else "zh"
 
     @rx.event
     def set_prompt(self, prompt: str) -> None:
@@ -197,15 +206,16 @@ class MarketingState(rx.State):
                 return
             role = None if self.active_role == DIRECTOR else self.active_role
             skill = self.active_skill or None
+            language = self.language
             self.messages = [*self.messages, ("user", task), ("assistant", "")]
             self.prompt = ""
             self.error = ""
-            self.activity = ["Starting the marketing team…"]
+            self.activity = ["Starting the marketing team…" if language == "en" else "正在启动营销团队…"]
             self.is_running = True
 
         answer = ""
         try:
-            agent = build_agent(include_thoughts=False, skill=skill, role=role)
+            agent = build_agent(include_thoughts=False, skill=skill, role=role, language=language)
             async for event in agent.astream_events(
                 {"messages": [HumanMessage(content=task)]}, version="v2"
             ):
@@ -218,11 +228,11 @@ class MarketingState(rx.State):
                 elif kind == "on_tool_start":
                     name = event.get("name", "tool")
                     async with self:
-                        self.activity = [*self.activity, f"Using {name}…"]
+                        self.activity = [*self.activity, f"Using {name}…" if language == "en" else f"正在使用 {name}…"]
                 elif kind == "on_tool_end":
                     name = event.get("name", "tool")
                     async with self:
-                        self.activity = [*self.activity, f"Finished {name}."]
+                        self.activity = [*self.activity, f"Finished {name}." if language == "en" else f"已完成 {name}。"]
         except Exception as exc:  # Surface configuration/API failures in the app.
             async with self:
                 self.error = str(exc)
@@ -231,7 +241,7 @@ class MarketingState(rx.State):
         finally:
             async with self:
                 self.is_running = False
-                self.activity = [*self.activity, "Done."]
+                self.activity = [*self.activity, "Done." if language == "en" else "已完成。"]
         yield
 
 
@@ -274,6 +284,13 @@ def sidebar() -> rx.Component:
                 value=MarketingState.active_skill,
                 on_change=MarketingState.set_skill,
                 placeholder="No playbook",
+                width="100%",
+            ),
+            rx.text("RESPONSE LANGUAGE", weight="bold", color="#60706A", size="1"),
+            rx.select(
+                ["zh", "en"],
+                value=MarketingState.language,
+                on_change=MarketingState.set_language,
                 width="100%",
             ),
             rx.spacer(),
@@ -438,9 +455,7 @@ def chat_page() -> rx.Component:
     )
 
 
-app = rx.App(
-    theme=rx.theme(appearance="light", accent_color="green", radius="large"),
-)
+app = rx.App()
 app.add_page(chat_page, route="/", title="GTM Marketing Agent", description="Your deployable AI marketing team", on_load=MarketingState.restore_session)
 app.add_page(login_page, route="/login", title="Sign in · GTM Marketing Agent")
 app.add_page(callback_page, route="/auth/callback", title="Signing in · GTM Marketing Agent", on_load=MarketingState.complete_magic_link)

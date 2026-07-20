@@ -145,37 +145,80 @@ def find_role(query: str) -> Role | None:
 # Prompt composition
 # ---------------------------------------------------------------------------
 
-def render_role_block(role: Role) -> str:
+_ENGLISH_ROLE_CONTEXT: dict[str, tuple[str, str, str]] = {
+    "b2b-linkedin": (
+        "You are a B2B growth and LinkedIn specialist. Win high-value decision-makers with precise account-based marketing: define target accounts, tailor messaging to each buying-committee role, and connect long sales-cycle stages from MQL to SQL to opportunity.",
+        "ABM, thought leadership, high-value decision-maker acquisition, and enterprise relationship building.",
+        "Use for ABM, target-account research and outreach, LinkedIn ads and Lead Gen Forms, thought leadership, sales enablement, cold-email sequences, competitor profiling, PR, and proof points.",
+    ),
+    "director": (
+        "You are the Head of Growth. Route work to the right specialist, put budget and attention where returns are highest, and turn signals from six channels into one coherent growth map. Be direct, data-led, and relentlessly actionable.",
+        "Cross-channel leadership, budget allocation, attribution, and revenue accountability.",
+        "Use for company-wide strategy, budgets, channel priorities, KPIs, attribution, positioning, pricing, offers, launches, growth loops, or any cross-channel question.",
+    ),
+    "growth-lead": (
+        "You operate as an orchestrator: decide who should own the work, how budget should be allocated, and how outcomes should be attributed. Match channel investment to the company stage and align teams around meaningful KPIs rather than vanity metrics.",
+        "Cross-channel orchestration, budget allocation, attribution, and growth loops.",
+        "Use for annual or quarterly growth plans, budget splits, multi-channel coordination, or strategic reviews with the marketing council.",
+    ),
+    "lifecycle-retention": (
+        "You are a lifecycle and retention specialist. Turn acquired leads into loyal customers through email, SMS, and in-product messaging. Segment sharply, optimise for LTV and retention, and automate the right message for the right person at the right time.",
+        "Lead nurture, customer lifetime value, and churn reduction.",
+        "Use for email/SMS sequences, welcome and nurture flows, segmentation, personalisation, churn prevention and win-back, onboarding, referrals, community, lead magnets, and LTV growth.",
+    ),
+    "paid-search": (
+        "You are a paid-search specialist focused on capturing high-intent demand. Optimise for ROAS and conversion rate, not vanity metrics: inspect search terms, exclude waste, set bids deliberately, and make every landing page earn the paid click.",
+        "High-intent demand capture, conversion-rate optimisation, immediate ROI, and performance acquisition.",
+        "Use for Google Search, Shopping, and Performance Max; keyword and negative-keyword strategy; bidding and budgets; ROAS/CPA targets; landing-page conversion; and search-intent capture.",
+    ),
+    "seo": (
+        "You are a technical and content SEO specialist. Build compounding growth by addressing crawlability, indexing, Core Web Vitals, site architecture, search intent, and content gaps. Prefer evidence from Search Console, backlinks, and the SERP over assumptions.",
+        "Long-term organic growth, site visibility, and search-intent alignment.",
+        "Use for technical and on-page audits, keyword research and intent, content gaps, internal/external linking, schema, site architecture, programmatic SEO, AEO, and Core Web Vitals.",
+    ),
+    "social-ads": (
+        "You are a paid-social operator who wins attention in interruptive channels. Treat creative as targeting, fight creative fatigue with structured testing, and scale with audiences and lookalikes. Adapt natively to Meta and TikTok while optimising CAC and payback period.",
+        "Paid social acquisition, audience targeting, and creative asset management across Meta and TikTok.",
+        "Use for Meta/TikTok strategy, audiences and lookalikes, retargeting, creative briefs and variants, video and image ads, ASO, and CAC optimisation.",
+    ),
+}
+
+
+def render_role_block(role: Role, language: str = "zh") -> str:
     """Render a role's persona + focus + toolkit as a prompt block.
 
     Appended after the Director base prompt when a specialist role is active.
     Compact on purpose — the deep playbooks still live in the skills themselves.
     """
+    is_english = language.lower().startswith("en")
+    persona, core_focus, when_to_use = _ENGLISH_ROLE_CONTEXT.get(
+        role.name, (role.persona, role.core_focus, role.when_to_use)
+    ) if is_english else (role.persona, role.core_focus, role.when_to_use)
     lines = [
-        f"## 当前角色：{role.title}（`{role.name}`）",
+        (f"## Active role: {role.title} (`{role.name}`)" if is_english else f"## 当前角色：{role.title}（`{role.name}`）"),
         "",
-        role.persona.strip(),
+        persona.strip(),
         "",
-        f"**核心职责：** {role.core_focus}" if role.core_focus else "",
+        (f"**Core focus:** {core_focus}" if is_english else f"**核心职责：** {core_focus}") if core_focus else "",
     ]
     lines = [ln for ln in lines if ln != "" or True]  # keep blank lines
 
     if role.owned_skills:
         lines.append("")
-        lines.append("**主责技能（owned）：** " + ", ".join(role.owned_skills))
+        lines.append(("**Owned skills:** " if is_english else "**主责技能（owned）：** ") + ", ".join(role.owned_skills))
     if role.shared_skills:
-        lines.append("**共享/通用技能：** " + ", ".join(role.shared_skills))
+        lines.append(("**Shared skills:** " if is_english else "**共享/通用技能：** ") + ", ".join(role.shared_skills))
     if role.preferred_tools:
         lines.append(
-            "**常用平台集成（需要 how-to 时用 read_tool_guide 拉取）：** "
+            ("**Preferred platform integrations (use `read_tool_guide` for setup details):** " if is_english else "**常用平台集成（需要 how-to 时用 read_tool_guide 拉取）：** ")
             + ", ".join(role.preferred_tools)
         )
     if role.tags:
         lines.append("")
         lines.append("#" + " #".join(role.tags))
-    if role.when_to_use:
+    if when_to_use:
         lines.append("")
-        lines.append("**适用场景：**")
-        lines.append(role.when_to_use.strip())
+        lines.append("**When to use:**" if is_english else "**适用场景：**")
+        lines.append(when_to_use.strip())
     # Drop empty strings while preserving intentional blank lines.
     return "\n".join(ln for ln in lines if ln).strip() + "\n"

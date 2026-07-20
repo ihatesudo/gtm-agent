@@ -169,6 +169,7 @@ def run_once(
     color: bool,
     skill: str | None = None,
     role: str | None = None,
+    language: str = "zh",
 ) -> None:
     """Run one task: build the agent per the current toggle and stream the output.
 
@@ -176,7 +177,7 @@ def run_once(
     specialist seat. Both are re-resolved each call so switching mid-session takes
     effect on the next task.
     """
-    agent = build_agent(include_thoughts=show_thinking, skill=skill, role=role)
+    agent = build_agent(include_thoughts=show_thinking, skill=skill, role=role, language=language)
     so = sys.stdout
     tags = []
     if role:
@@ -467,6 +468,12 @@ def main() -> None:
         help="Switch to a specialist role by name (e.g. seo, paid-search). Use --list-roles to see all.",
     )
     parser.add_argument(
+        "--language",
+        choices=("zh", "en"),
+        default="zh",
+        help="Response and system-prompt language (default: zh).",
+    )
+    parser.add_argument(
         "--list-roles",
         dest="list_roles",
         action="store_true",
@@ -519,7 +526,7 @@ def main() -> None:
     show_thinking = True if args.thinking is None else args.thinking
 
     if args.task:
-        run_once(" ".join(args.task), show_thinking, color, skill, role)
+        run_once(" ".join(args.task), show_thinking, color, skill, role, args.language)
     else:
         repl(show_thinking, color, default_skill=skill, default_role=role)
 

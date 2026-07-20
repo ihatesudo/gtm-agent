@@ -15,7 +15,7 @@ from langgraph.prebuilt import create_react_agent
 
 from .tools import ALL_TOOLS
 
-SYSTEM_PROMPT = """你是这家公司的增长负责人（Marketing Director / Head of Growth），手下带一支六人专家小队：搜索投放（Paid Search/SEM）、社交效果广告（Social Ads）、技术与内容 SEO、B2B 与 LinkedIn、生命周期与留存（Email/CRM），外加你这个统筹全局的指挥官。你不亲自下场做完每一件事——你的价值在判断与调度。
+SYSTEM_PROMPT_ZH = """你是这家公司的增长负责人（Marketing Director / Head of Growth），手下带一支六人专家小队：搜索投放（Paid Search/SEM）、社交效果广告（Social Ads）、技术与内容 SEO、B2B 与 LinkedIn、生命周期与留存（Email/CRM），外加你这个统筹全局的指挥官。你不亲自下场做完每一件事——你的价值在判断与调度。
 
 ## 你的团队（可按需切换 --role 深度执行）
 
@@ -39,8 +39,35 @@ SYSTEM_PROMPT = """你是这家公司的增长负责人（Marketing Director / H
 - 用中文回答，保持专业、具体、可执行；避免空话套话。给建议永远落到"下一步做什么"。
 """
 
+SYSTEM_PROMPT_EN = """You are this company's Marketing Director / Head of Growth. You lead a six-person specialist team: Paid Search/SEM, Social Ads, Technical & Content SEO, B2B & LinkedIn, Lifecycle & Retention, plus you as the cross-functional leader. You do not need to personally execute every task: your value is judgment, prioritisation, and routing work to the right expert.
 
-def build_model(include_thoughts: bool = True) -> ChatGoogleGenerativeAI:
+## Your team (switch with --role for deep execution)
+
+- **paid-search**: Google Ads/SEM, keywords and negatives, bidding, ROAS/CPA, and landing-page conversion.
+- **social-ads**: Meta/TikTok paid acquisition, audiences and lookalikes, retargeting, and creative briefs.
+- **seo**: Technical SEO, search intent, content gaps, internal/external links, schema, Core Web Vitals, and AI search/AEO.
+- **b2b-linkedin**: ABM, target accounts, Lead Gen Forms, thought leadership, sales enablement, and cold email.
+- **lifecycle-retention**: Email/SMS sequences, onboarding, segmentation, churn prevention, and LTV.
+- **growth-lead**: Full-funnel strategy, budget allocation, attribution, KPI alignment, and growth loops.
+
+## How to work
+
+1. First identify the owning channel or function. For deep execution, recommend the relevant `--role` or a skill playbook (`/skills` lists them).
+2. Answer directly whenever possible, in the voice and depth of the relevant specialist.
+3. Make cross-channel decisions yourself: budgets, channel priorities, positioning, product marketing, pricing, offers, launches, and growth loops are your home turf.
+
+General principles:
+- For time-sensitive facts—prices, news, competitor moves, popularity—use `web_search` first. Do not invent data.
+- Save long-form or final deliverables using `save_asset`; use descriptive kebab-case `.md` filenames.
+- When platform setup detail is required, use `read_tool_guide` to load the relevant integration guide.
+- Reply in clear, professional, actionable English only. Avoid filler. Every recommendation should end with a concrete next step.
+"""
+
+# Kept as the backwards-compatible default for the existing Chinese-first CLI.
+SYSTEM_PROMPT = SYSTEM_PROMPT_ZH
+
+
+def build_model(include_thoughts: bool = True):
     """Build the Gemini chat model.
 
     Two auth backends, selected by the ``GENAI_PROVIDER`` env var (or the
@@ -52,6 +79,8 @@ def build_model(include_thoughts: bool = True) -> ChatGoogleGenerativeAI:
       ``GOOGLE_CLOUD_LOCATION`` (default ``us-central1``).
     - ``api``: Gemini Developer API (Generative Language API). Authenticates
       with the ``GEMINI_API_KEY`` env var.
+    - ``openrouter``: OpenRouter's OpenAI-compatible API. Authenticates with
+      ``OPENROUTER_API_KEY`` and uses ``OPENROUTER_MODEL``.
 
     When include_thoughts=True the model emits a human-readable reasoning
     (thinking) trace; combined with the CLI's streaming output you can watch
@@ -82,19 +111,42 @@ def build_model(include_thoughts: bool = True) -> ChatGoogleGenerativeAI:
             )
         return ChatGoogleGenerativeAI(**common)
 
+    if provider == "openrouter":
+        from langchain_openai import ChatOpenAI
+
+        api_key = os.environ.get("OPENROUTER_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "OPENROUTER_API_KEY is missing. Create an API key at OpenRouter "
+                "and set it in .env."
+            )
+        headers = {"X-OpenRouter-Title": "GTM Marketing Agent"}
+        site_url = os.environ.get("OPENROUTER_SITE_URL", "").strip()
+        if site_url:
+            headers["HTTP-Referer"] = site_url
+        return ChatOpenAI(
+            model=os.environ.get("OPENROUTER_MODEL", "openrouter/auto"),
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
+            default_headers=headers,
+            temperature=0.7,
+        )
+
     # Developer API path: needs a valid API key.
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "GEMINI_API_KEY is missing and GENAI_PROVIDER is not 'vertex'. "
-            "Either set a valid Gemini API key, or use Vertex "
-            "(GENAI_PROVIDER=vertex with ADC). See .env."
+            "GEMINI_API_KEY is missing. Set GENAI_PROVIDER=openrouter with an "
+            "OPENROUTER_API_KEY, or configure Gemini/Vertex. See .env.sample."
         )
     return ChatGoogleGenerativeAI(google_api_key=api_key, **common)
 
 
 def build_agent(
-    include_thoughts: bool = True, skill: str | None = None, role: str | None = None
+    include_thoughts: bool = True,
+    skill: str | None = None,
+    role: str | None = None,
+    language: str = "zh",
 ):
     """Build and return the compiled LangGraph ReAct agent.
 
@@ -109,7 +161,7 @@ def build_agent(
     ``skill`` optionally activates a marketing skill playbook (from skills/),
     appended after the role block. Pass ``None`` for the general Director agent.
     """
-    prompt = _compose_prompt(skill=skill, role=role)
+    prompt = _compose_prompt(skill=skill, role=role, language=language)
     return create_react_agent(
         model=build_model(include_thoughts=include_thoughts),
         tools=ALL_TOOLS,
@@ -117,19 +169,29 @@ def build_agent(
     )
 
 
-def _compose_prompt(skill: str | None, role: str | None = None) -> str:
+def _compose_prompt(
+    skill: str | None, role: str | None = None, language: str = "zh"
+) -> str:
     """Return the system prompt: Director base + (optional) role + (optional) skill."""
-    prompt = SYSTEM_PROMPT
+    is_english = language.lower().startswith("en")
+    prompt = SYSTEM_PROMPT_EN if is_english else SYSTEM_PROMPT_ZH
 
     if role:
         from . import roles_loader
 
         found = roles_loader.find_role(role)
         if found is not None:
-            prompt += (
-                "\n\n本次会话你切换为下面的专家角色，以其人设与专长驱动回答"
+            role_intro = (
+                "\n\nFor this session, adopt the following specialist role and let its "
+                "persona and expertise drive the answer (while still following the "
+                "general principles above):\n\n"
+                if is_english
+                else "\n\n本次会话你切换为下面的专家角色，以其人设与专长驱动回答"
                 "（仍遵守上面的通用原则）：\n\n"
-                + roles_loader.render_role_block(found)
+            )
+            prompt += (
+                role_intro
+                + roles_loader.render_role_block(found, language="en" if is_english else "zh")
             )
 
     if skill:

@@ -255,6 +255,15 @@ make auth      # one-time: gcloud application-default login (enables Vertex AI)
 make run       # interactive REPL — you're talking to the team
 ```
 
+For English-only agent instructions and responses in one-shot CLI mode, add
+`--language en` (for example: `uv run python -m marketing_agent --language en
+--role seo "Audit this site structure"`). The Reflex app has the same per-session
+selector in its sidebar; Chinese (`zh`) remains the default.
+
+```bash
+uv run python -m marketing_agent --language en --role seo "Audit this site structure"
+```
+
 ### Web app with passwordless login
 
 The Reflex app is available through `make web`. It uses Appwrite Magic URL
@@ -272,6 +281,47 @@ link. There is no Google OAuth app, password database, or custom domain needed.
 The `/auth/callback` route validates the Appwrite browser JWT again on the
 Python server before granting agent access. The Node integration CLIs remain
 server-side repository tools and are not executable from the browser.
+
+### Production release
+
+Follow this order once. You do **not** need to own a domain.
+
+1. Create a free Appwrite Cloud project. Add `localhost` as a Web platform for
+   local testing, then copy its **Endpoint** (ending in `/v1`) and **Project ID**.
+2. Create an OpenRouter API key with a spending limit.
+3. Create the production env file and fill in those four values:
+
+   ```bash
+   cp .env.sample .env.production
+   ```
+
+4. Sign in to Reflex Cloud once; this opens a browser login:
+
+   ```bash
+   make release-login
+   ```
+
+5. Deploy the app:
+
+   ```bash
+   make release
+   ```
+
+   This validates `.env.production`, builds the Reflex app, and securely uploads
+   the values as Reflex Cloud environment variables. It then prints the live app
+   URL.
+6. Register that live hostname in Appwrite as a second **Web** platform. This
+   enables the browser to request Magic URLs from your deployed app:
+
+```bash
+make appwrite-platform APP_URL=https://your-app.reflex.run
+```
+
+7. Open the deployed URL, enter an email address, and use the received sign-in
+   link to verify the login flow.
+
+For later changes to OpenRouter or Appwrite values, edit `.env.production` and
+run `make release-secrets`.
 
 > 👉 **New here?** Run `make run`, then type a real brief —
 > *"我的 SaaS 要在北美做冷启动，给我 90 天获客计划"* — and watch the Director
