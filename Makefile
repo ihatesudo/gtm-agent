@@ -108,7 +108,7 @@ hosting-build: hosting-check ## Export the static Reflex frontend for Appwrite S
 
 hosting-auth-artifact-check: ## Verify the exported frontend waits for the Appwrite auth bridge
 	@rg -q 'window.GTMAuth = \{' .web/build/client || { echo "Missing Appwrite auth bridge in static build."; exit 2; }
-	@rg -q 'while \(!window.GTMAuth\)' .web/build/client || { echo "Static build does not wait for the Appwrite auth bridge."; exit 2; }
+	@rg -q 'GTM_APPWRITE_CONFIG' .web/build/client || { echo "Missing Appwrite public configuration in static build."; exit 2; }
 
 web-auth-test: ## Run regression checks for the static Appwrite Magic Link flow
 	@$(PY) -m unittest discover -s tests -p 'test_*.py'

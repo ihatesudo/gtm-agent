@@ -28,9 +28,12 @@ AUTH_BRIDGE_SCRIPT = Path(__file__).with_name("appwrite_auth.js").read_text()
 
 
 def _auth_script(call: str) -> str:
-    """Run an Appwrite browser call after its deferred scripts have loaded."""
+    """Run an Appwrite browser call without depending on page-script timing."""
     return (
         "(async () => {"
+        "if (!window.GTMAuth) {"
+        + AUTH_BRIDGE_SCRIPT
+        + "}"
         "const deadline = Date.now() + 10000;"
         "while (!window.GTMAuth) {"
         "if (Date.now() >= deadline) throw new Error('Appwrite authentication scripts did not load. Refresh and try again.');"

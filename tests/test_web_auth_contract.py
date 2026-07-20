@@ -81,9 +81,11 @@ class MagicLinkContractTests(unittest.TestCase):
         self.assertIn('identity.get("error")', app)
 
     def test_auth_calls_wait_for_deferred_browser_scripts(self) -> None:
-        """Initial page hydration must not race the deferred Appwrite scripts."""
+        """Initial page hydration must not race or depend on page script timing."""
         app = WEB_APP.read_text()
         self.assertIn("def _auth_script(call: str)", app)
+        self.assertIn('"if (!window.GTMAuth) {"', app)
+        self.assertIn("+ AUTH_BRIDGE_SCRIPT", app)
         self.assertIn("while (!window.GTMAuth)", app)
         self.assertIn("AUTH_BRIDGE_SCRIPT", app)
         self.assertNotIn('rx.script(src=rx.asset("appwrite_auth.js"', app)
