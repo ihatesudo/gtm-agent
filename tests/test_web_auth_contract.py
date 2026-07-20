@@ -70,6 +70,16 @@ class MagicLinkContractTests(unittest.TestCase):
         self.assertIn("return { ok: false, error:", bridge)
         self.assertIn("result.get(\"error\")", app)
 
+    def test_callback_uses_the_token_session_endpoint_and_returns_errors(self) -> None:
+        """Opening a Magic URL must exchange its token for a session once."""
+        bridge = AUTH_BRIDGE.read_text()
+        app = WEB_APP.read_text()
+        self.assertIn('this.request("/account/sessions/token"', bridge)
+        self.assertNotIn("/account/sessions/magic-url", bridge)
+        self.assertIn("async finishMagicLink()", bridge)
+        self.assertIn('return { ok: false, error:', bridge)
+        self.assertIn('identity.get("error")', app)
+
     def test_auth_calls_wait_for_deferred_browser_scripts(self) -> None:
         """Initial page hydration must not race the deferred Appwrite scripts."""
         app = WEB_APP.read_text()

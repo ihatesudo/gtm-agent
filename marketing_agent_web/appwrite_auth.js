@@ -35,18 +35,31 @@ window.GTMAuth = {
   },
 
   async finishMagicLink() {
-    const params = new URLSearchParams(window.location.search);
-    const userId = params.get("userId");
-    const secret = params.get("secret");
-    if (!userId || !secret) throw new Error("This sign-in link is incomplete or has already been used.");
-    await this.request("/account/sessions/magic-url", { method: "POST", body: { userId, secret } });
-    const [user, token] = await Promise.all([this.request("/account"), this.request("/account/jwt", { method: "POST" })]);
-    return { jwt: token.jwt, userId: user.$id, email: user.email };
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const userId = params.get("userId");
+      const secret = params.get("secret");
+      if (!userId || !secret) throw new Error("This sign-in link is incomplete or has already been used.");
+
+      // Appwrite creates a session from every token type through this shared
+      // endpoint. The magic-url endpoint is only for creating the email token.
+      await this.request("/account/sessions/token", { method: "POST", body: { userId, secret } });
+      const [user, token] = await Promise.all([this.request("/account"), this.request("/account/jwt", { method: "POST" })]);
+      return { ok: true, jwt: token.jwt, userId: user.$id, email: user.email };
+    } catch (error) {
+      return { ok: false, error: error?.message || "Could not complete sign-in. Request a new link and try again." };
+    }
   },
 
   async restoreSession() {
-    const [user, token] = await Promise.all([this.request("/account"), this.request("/account/jwt", { method: "POST" })]);
-    return { jwt: token.jwt, userId: user.$id, email: user.email };
+    try {
+      const [user, token] = await Promise.all([this.request("/account"), this.request("/account/jwt", { method: "POST" })]);
+      return { ok: true, jwt: token.jwt, userId: user.$id, email: user.email };
+    } catch (_error) {
+      // An anonymous visitor simply has no session yet; do not surface that as
+      // a page-load error.
+      return { ok: false };
+    }
   },
 
   async signOut() {

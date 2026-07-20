@@ -174,6 +174,8 @@ class MarketingState(rx.State):
 
     @rx.event
     def accept_appwrite_identity(self, identity: dict) -> None:
+        if not identity.get("ok", True):
+            return
         try:
             verified = self._verify_appwrite_jwt(str(identity.get("jwt", "")))
         except RuntimeError as exc:
@@ -195,6 +197,9 @@ class MarketingState(rx.State):
 
     @rx.event
     def finish_identity(self, identity: dict):
+        if not identity.get("ok", True):
+            self.login_message = str(identity.get("error") or "Could not complete sign-in. Request a new link and try again.")
+            return
         self.accept_appwrite_identity(identity)
         if self.user_id:
             return rx.redirect("/")

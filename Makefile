@@ -14,12 +14,15 @@ PRODUCTION_BACKEND_URL := https://marketing-agent-api-ib4z.onrender.com
 PRODUCTION_SITE_URL := https://6a5e450300344d9a2bb8.appwrite.network
 PRODUCTION_APPWRITE_ENDPOINT := https://syd.cloud.appwrite.io/v1
 PRODUCTION_APPWRITE_PROJECT_ID := 6a5e1fb200164405f869
+LOCAL_APPWRITE_ENDPOINT ?= $(PRODUCTION_APPWRITE_ENDPOINT)
+LOCAL_APPWRITE_PROJECT_ID ?= $(PRODUCTION_APPWRITE_PROJECT_ID)
+LOCAL_PORT ?= 3001
 
 # Load .env (Vertex/ADC + model config) if present, so you never have to
 # manually `set -a; source .env; set +a` before each command.
 ENV_LOAD := set -a && { [ -f .env ] && . ./.env; }; set +a
 
-.PHONY: help setup auth env run web deploy release release-check release-deps release-build release-login release-project release-secrets appwrite-platform hosting-check hosting-build web-auth-test appwrite-login appwrite-init appwrite-auth-check appwrite-deploy deploy-static agent ask role skill menu roles skills clean
+.PHONY: help setup auth env run web web-auth-local deploy release release-check release-deps release-build release-login release-project release-secrets appwrite-platform hosting-check hosting-build web-auth-test appwrite-login appwrite-init appwrite-auth-check appwrite-deploy deploy-static agent ask role skill menu roles skills clean
 
 help: ## Show this help
 	@echo "Usage: make <target>  (extra args: MSG=\"...\" NAME=<role|skill>)"
@@ -31,6 +34,7 @@ help: ## Show this help
 	@echo "Running the agent:"
 	@echo "  run       Interactive REPL (role/skill menu + /commands)"
 	@echo "  web       Run the deployable Reflex web app locally"
+	@echo "  web-auth-local  Test Appwrite Magic Link locally at http://localhost:3001"
 	@echo ""
 	@echo "Appwrite Sites + Render (recommended):"
 	@echo "  hosting-check   Check the backend and site URLs required for a static build"
@@ -82,6 +86,10 @@ run agent: ## Interactive REPL
 
 web: ## Run the Reflex web app locally
 	@$(ENV_LOAD); uv run reflex run
+
+web-auth-local: web-auth-test ## Run a production-mode local Appwrite Magic Link test server
+	@echo "Open http://localhost:$(LOCAL_PORT)/login after the server starts. Press Ctrl-C to stop it."
+	@$(ENV_LOAD); APPWRITE_ENDPOINT="$(LOCAL_APPWRITE_ENDPOINT)" APPWRITE_PROJECT_ID="$(LOCAL_APPWRITE_PROJECT_ID)" REFLEX_API_URL="http://localhost:$(LOCAL_PORT)" REFLEX_DEPLOY_URL="http://localhost:$(LOCAL_PORT)" $(REFLEX) run --env prod --single-port --frontend-port "$(LOCAL_PORT)"
 
 hosting-check: ## Validate Appwrite and public URLs for the Appwrite Sites static build
 	@set -eu; \
