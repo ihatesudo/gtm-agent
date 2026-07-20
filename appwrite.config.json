@@ -1,0 +1,25 @@
+{
+    "organizationId": "6a5e1fa5003cc2b225a7",
+    "projectId": "6a5e1fb200164405f869",
+    "projectName": "gtm-agent",
+    "endpoint": "https://syd.cloud.appwrite.io/v1",
+    "sites": [
+        {
+            "$id": "6a5e42400007e2d2f98c",
+            "name": "gtm-agent-site",
+            "framework": "other",
+            "adapter": "static",
+            "buildRuntime": "node-22",
+            "installCommand": "true",
+            "buildCommand": "true",
+            "outputDirectory": ".",
+            "fallbackFile": "",
+            "buildSpecification": "s-2vcpu-2gb",
+            "runtimeSpecification": "s-0.5vcpu-512mb",
+            "deploymentRetention": 0,
+            "timeout": 30,
+            "logging": true,
+            "path": ".web/build/client"
+        }
+    ]
+}
