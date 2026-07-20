@@ -8,12 +8,18 @@ REFLEX_PROJECT ?=
 REFLEX_PROJECT_NAME ?= Default Project
 BACKEND_URL ?=
 SITE_URL ?=
+APPWRITE_ENDPOINT ?=
+APPWRITE_PROJECT_ID ?=
+PRODUCTION_BACKEND_URL := https://marketing-agent-api-ib4z.onrender.com
+PRODUCTION_SITE_URL := https://6a5e450300344d9a2bb8.appwrite.network
+PRODUCTION_APPWRITE_ENDPOINT := https://syd.cloud.appwrite.io/v1
+PRODUCTION_APPWRITE_PROJECT_ID := 6a5e1fb200164405f869
 
 # Load .env (Vertex/ADC + model config) if present, so you never have to
 # manually `set -a; source .env; set +a` before each command.
 ENV_LOAD := set -a && { [ -f .env ] && . ./.env; }; set +a
 
-.PHONY: help setup auth env run web deploy release release-check release-deps release-build release-login release-project release-secrets appwrite-platform hosting-check hosting-build appwrite-login appwrite-init appwrite-deploy agent ask role skill menu roles skills clean
+.PHONY: help setup auth env run web deploy release release-check release-deps release-build release-login release-project release-secrets appwrite-platform hosting-check hosting-build web-auth-test appwrite-login appwrite-init appwrite-auth-check appwrite-deploy deploy-static agent ask role skill menu roles skills clean
 
 help: ## Show this help
 	@echo "Usage: make <target>  (extra args: MSG=\"...\" NAME=<role|skill>)"
@@ -29,9 +35,11 @@ help: ## Show this help
 	@echo "Appwrite Sites + Render (recommended):"
 	@echo "  hosting-check   Check the backend and site URLs required for a static build"
 	@echo "  hosting-build   Build the static frontend for Appwrite Sites"
+	@echo "  web-auth-test   Run Magic Link deployment regression checks"
 	@echo "  appwrite-login  Sign in to the Appwrite CLI"
 	@echo "  appwrite-init   Create the Appwrite Sites CLI config (run once)"
-	@echo "  appwrite-deploy Build and deploy the frontend to Appwrite Sites"
+	@echo "  appwrite-deploy Build and deploy the frontend (custom URLs)"
+	@echo "  deploy-static   Deploy production frontend — use this command"
 	@echo ""
 	@echo "Legacy Reflex Cloud release:"
 	@echo "  release-login    Sign in to Reflex Cloud"
@@ -75,17 +83,21 @@ run agent: ## Interactive REPL
 web: ## Run the Reflex web app locally
 	@$(ENV_LOAD); uv run reflex run
 
-hosting-check: ## Validate BACKEND_URL and SITE_URL for the Appwrite Sites static build
+hosting-check: ## Validate Appwrite and public URLs for the Appwrite Sites static build
 	@set -eu; \
-	for pair in "BACKEND_URL=$(BACKEND_URL)" "SITE_URL=$(SITE_URL)"; do \
+	for pair in "BACKEND_URL=$(BACKEND_URL)" "SITE_URL=$(SITE_URL)" "APPWRITE_ENDPOINT=$(APPWRITE_ENDPOINT)"; do \
 	  value=$${pair#*=}; name=$${pair%%=*}; \
-	  case "$$value" in https://*) ;; *) echo "$$name must be an https URL. Example: make hosting-build BACKEND_URL=https://your-api.onrender.com SITE_URL=https://your-site.appwrite.network"; exit 2 ;; esac; \
+	  case "$$value" in https://*) ;; *) echo "$$name must be an https URL. Example: make appwrite-deploy BACKEND_URL=https://your-api.onrender.com SITE_URL=https://your-site.appwrite.network APPWRITE_ENDPOINT=https://region.cloud.appwrite.io/v1 APPWRITE_PROJECT_ID=your-project-id"; exit 2 ;; esac; \
 	done; \
-	echo "Static build will connect $(SITE_URL) to $(BACKEND_URL)."
+	case "$(APPWRITE_PROJECT_ID)" in ''|*replace-me*|*'<project-id>'*) echo "APPWRITE_PROJECT_ID must be set."; exit 2 ;; esac; \
+	echo "Static build will connect $(SITE_URL) to $(BACKEND_URL) with Appwrite project $(APPWRITE_PROJECT_ID)."
 
 hosting-build: hosting-check ## Export the static Reflex frontend for Appwrite Sites
-	@REFLEX_API_URL="$(BACKEND_URL)" REFLEX_DEPLOY_URL="$(SITE_URL)" $(REFLEX) export --frontend-only --no-zip --env prod
+	@APPWRITE_ENDPOINT="$(APPWRITE_ENDPOINT)" APPWRITE_PROJECT_ID="$(APPWRITE_PROJECT_ID)" REFLEX_API_URL="$(BACKEND_URL)" REFLEX_DEPLOY_URL="$(SITE_URL)" $(REFLEX) export --frontend-only --no-zip --env prod
 	@echo "Static site is ready in .web/build/client."
+
+web-auth-test: ## Run regression checks for the static Appwrite Magic Link flow
+	@$(PY) -m unittest discover -s tests -p 'test_*.py'
 
 appwrite-login: ## Authenticate the Appwrite CLI
 	@appwrite login
@@ -94,10 +106,20 @@ appwrite-init: ## Interactively create Appwrite Sites configuration (set output 
 	@appwrite init sites
 	@echo "When prompted, set the static site's output directory/path to .web/build/client."
 
-appwrite-deploy: hosting-build ## Build and push the configured static site to Appwrite Sites
+appwrite-auth-check: ## Verify Appwrite CLI login and the Sites configuration
 	@command -v appwrite >/dev/null 2>&1 || { echo "Appwrite CLI is required. Install it with: npm install -g appwrite-cli"; exit 2; }
+	@appwrite whoami >/dev/null 2>&1 || { echo "Appwrite CLI is not signed in. Run: make appwrite-login"; exit 2; }
 	@test -f appwrite.config.json || { echo "Missing appwrite.config.json. Run 'make appwrite-init' first."; exit 2; }
+
+appwrite-deploy: appwrite-auth-check web-auth-test hosting-build ## Test, build, and push the configured static site
 	@appwrite push sites --all --force
+
+deploy-static: ## Build and deploy the configured production static frontend
+	@$(MAKE) appwrite-deploy \
+		BACKEND_URL="$(PRODUCTION_BACKEND_URL)" \
+		SITE_URL="$(PRODUCTION_SITE_URL)" \
+		APPWRITE_ENDPOINT="$(PRODUCTION_APPWRITE_ENDPOINT)" \
+		APPWRITE_PROJECT_ID="$(PRODUCTION_APPWRITE_PROJECT_ID)"
 
 deploy: release ## Alias for the production release workflow
 

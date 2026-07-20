@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 import json
 import os
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -23,6 +24,21 @@ DIRECTOR = "director"
 APPWRITE_ENDPOINT = os.environ.get("APPWRITE_ENDPOINT", "").strip().rstrip("/")
 APPWRITE_PROJECT_ID = os.environ.get("APPWRITE_PROJECT_ID", "").strip()
 APPWRITE_CONFIG = json.dumps({"endpoint": APPWRITE_ENDPOINT, "projectId": APPWRITE_PROJECT_ID})
+AUTH_BRIDGE_SCRIPT = Path(__file__).with_name("appwrite_auth.js").read_text()
+
+
+def _auth_script(call: str) -> str:
+    """Run an Appwrite browser call after its deferred scripts have loaded."""
+    return (
+        "(async () => {"
+        "const deadline = Date.now() + 10000;"
+        "while (!window.GTMAuth) {"
+        "if (Date.now() >= deadline) throw new Error('Appwrite authentication scripts did not load. Refresh and try again.');"
+        "await new Promise((resolve) => setTimeout(resolve, 50));"
+        "}"
+        f"return window.GTMAuth.{call};"
+        "})()"
+    )
 
 
 def _text_from_chunk(chunk: object) -> str:
@@ -144,9 +160,8 @@ class MarketingState(rx.State):
             self.login_message = "Enter a valid email address."
             return
         self.login_message = "Sending your sign-in link…"
-        script = (
-            "window.GTMAuth.sendMagicLink("
-            f"{json.dumps(email)}, window.location.origin + '/auth/callback')"
+        script = _auth_script(
+            f"sendMagicLink({json.dumps(email)}, window.location.origin + '/auth/callback')"
         )
         return rx.call_script(script, callback=MarketingState.magic_link_sent)
 
@@ -154,6 +169,8 @@ class MarketingState(rx.State):
     def magic_link_sent(self, result: dict) -> None:
         if result.get("ok"):
             self.login_message = "Check your inbox for a secure sign-in link."
+        else:
+            self.login_message = str(result.get("error") or "Could not send the sign-in link.")
 
     @rx.event
     def accept_appwrite_identity(self, identity: dict) -> None:
@@ -169,12 +186,12 @@ class MarketingState(rx.State):
     @rx.event
     def restore_session(self):
         if APPWRITE_ENDPOINT and APPWRITE_PROJECT_ID:
-            return rx.call_script("window.GTMAuth.restoreSession()", callback=MarketingState.accept_appwrite_identity)
+            return rx.call_script(_auth_script("restoreSession()"), callback=MarketingState.accept_appwrite_identity)
 
     @rx.event
     def complete_magic_link(self):
         if APPWRITE_ENDPOINT and APPWRITE_PROJECT_ID:
-            return rx.call_script("window.GTMAuth.finishMagicLink()", callback=MarketingState.finish_identity)
+            return rx.call_script(_auth_script("finishMagicLink()"), callback=MarketingState.finish_identity)
 
     @rx.event
     def finish_identity(self, identity: dict):
@@ -188,7 +205,7 @@ class MarketingState(rx.State):
         self.user_email = ""
         self.messages = []
         self.activity = []
-        return rx.call_script("window.GTMAuth.signOut()", callback=MarketingState.logout_complete)
+        return rx.call_script(_auth_script("signOut()"), callback=MarketingState.logout_complete)
 
     @rx.event
     def logout_complete(self, _result: dict):
@@ -381,8 +398,7 @@ def chat_screen() -> rx.Component:
             spacing="5",
         ),
         rx.script("window.GTM_APPWRITE_CONFIG = " + APPWRITE_CONFIG + ";"),
-        rx.script(src="https://cdn.jsdelivr.net/npm/appwrite@17.0.0", defer=True),
-        rx.script(src=rx.asset("appwrite_auth.js", shared=True), defer=True),
+        rx.script(AUTH_BRIDGE_SCRIPT),
         background="#FCFDFC",
         min_height="100vh",
     )
@@ -397,6 +413,7 @@ def login_page() -> rx.Component:
             rx.input(
                 value=MarketingState.login_email,
                 on_change=MarketingState.set_login_email,
+                debounce_timeout=0,
                 placeholder="you@company.com",
                 type="email",
                 width="100%",
@@ -409,8 +426,7 @@ def login_page() -> rx.Component:
             spacing="4",
         ),
         rx.script("window.GTM_APPWRITE_CONFIG = " + APPWRITE_CONFIG + ";"),
-        rx.script(src="https://cdn.jsdelivr.net/npm/appwrite@17.0.0", defer=True),
-        rx.script(src=rx.asset("appwrite_auth.js", shared=True), defer=True),
+        rx.script(AUTH_BRIDGE_SCRIPT),
         min_height="100vh",
         background="#F6F9F7",
         padding="1rem",
@@ -429,8 +445,7 @@ def callback_page() -> rx.Component:
             spacing="4",
         ),
         rx.script("window.GTM_APPWRITE_CONFIG = " + APPWRITE_CONFIG + ";"),
-        rx.script(src="https://cdn.jsdelivr.net/npm/appwrite@17.0.0", defer=True),
-        rx.script(src=rx.asset("appwrite_auth.js", shared=True), defer=True),
+        rx.script(AUTH_BRIDGE_SCRIPT),
         min_height="100vh",
         background="#F6F9F7",
     )

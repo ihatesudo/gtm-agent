@@ -5,10 +5,10 @@
 - [x] Deploy `render.yaml` through Render MCP and wait for the backend URL: `https://marketing-agent-api-ib4z.onrender.com` (`/ping` returns `pong`).
 - [x] Push the deployment commit to `origin/main` and redeploy Render service `srv-d9f3phfavr4c73c3qlk0`.
 - [ ] In Render, set `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `APPWRITE_ENDPOINT`, and `APPWRITE_PROJECT_ID`.
-- [ ] Create an Appwrite **Static Site** and copy its `*.appwrite.network` URL.
+- [x] Create an Appwrite **Static Site**: `https://6a5e450300344d9a2bb8.appwrite.network`.
 - [ ] Add that Appwrite Sites hostname as a **Web platform** in the Appwrite project.
-- [x] In Render, set `REFLEX_CORS_ALLOWED_ORIGINS` to `https://6a5e42400007e2d2f98c.appwrite.network`.
-- [x] Build the frontend for `https://marketing-agent-api-ib4z.onrender.com` and `https://6a5e42400007e2d2f98c.appwrite.network`; output is in `.web/build/client`.
+- [x] In Render, set `REFLEX_CORS_ALLOWED_ORIGINS` to `https://6a5e450300344d9a2bb8.appwrite.network`.
+- [x] Build the frontend for `https://marketing-agent-api-ib4z.onrender.com` and `https://6a5e450300344d9a2bb8.appwrite.network`; output is in `.web/build/client`.
 
   ```bash
   make hosting-build BACKEND_URL=https://your-api.onrender.com SITE_URL=https://your-site.appwrite.network
