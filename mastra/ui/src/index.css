@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap');
+
 *,
 *::before,
 *::after {
@@ -7,44 +9,62 @@
 }
 
 :root {
-  --bg: #0a0a0b;
-  --surface: #151516;
-  --surface-hover: #1c1c1e;
-  --border: #262628;
-  --border-light: #323234;
-  --text: #e8e8ed;
-  --text-secondary: #888892;
-  --text-tertiary: #5c5c66;
-  --accent: #5b8def;
-  --accent-hover: #6f9df5;
-  --accent-subtle: rgba(91, 141, 239, 0.12);
-  --user-msg: #1c2a45;
-  --agent-msg: #161618;
-  --danger: #f26b6b;
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  --sidebar-width: 280px;
+  --sidebar-bg: #141416;
+  --sidebar-border: #27272a;
+  --sidebar-hover: #1f1f23;
+  --sidebar-text: #e4e4e7;
+  --sidebar-text-dim: #71717a;
+  --sidebar-accent: #22c55e;
+
+  --main-bg: #fafafb;
+  --text: #18181b;
+  --text-secondary: #71717a;
+  --text-tertiary: #a1a1aa;
+  --border: #e5e5e7;
+  --border-light: #d4d4d8;
+  --surface: #ffffff;
+  --surface-hover: #f5f5f7;
+
+  --accent: #09090b;
+  --accent-hover: #27272a;
+  --accent-green: #10b981;
+  --danger: #ef4444;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
   --font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+
   --radius: 10px;
   --radius-sm: 6px;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.06), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
 }
 
 html,
 body,
 #root {
   height: 100%;
-  background: var(--bg);
+  font-family: var(--font-sans);
+  background: var(--main-bg);
   color: var(--text);
-  font-family: var(--font);
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
 
 input,
 textarea,
 button {
   font-family: inherit;
+  font-size: inherit;
 }
 
 a {
@@ -54,14 +74,18 @@ a {
 
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 3px;
+  border-radius: 9999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-light);
+  background: var(--text-tertiary);
 }

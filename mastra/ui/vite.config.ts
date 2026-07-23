@@ -8,4 +8,10 @@ export default defineConfig({
       '/api': 'http://localhost:4111',
     },
   },
-});
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test-setup.ts',
+    css: true,
+  },
+} as import('vite').UserConfig & { test: import('vitest/config').UserConfig['test'] });
