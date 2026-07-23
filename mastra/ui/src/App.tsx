@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Agent, Message } from './types';
-import { fetchAgents, sendMessage } from './lib/api';
+import { fetchAgents, sendMessageStream } from './lib/api';
 import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
 
@@ -9,6 +9,8 @@ export default function App() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [isReasoning, setIsReasoning] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -20,6 +22,8 @@ export default function App() {
 
   const handleNewChat = useCallback(() => {
     setMessages([]);
+    setStreamingText('');
+    setIsReasoning(false);
     setThreadId(null);
   }, []);
 
@@ -27,16 +31,44 @@ export default function App() {
     async (content: string) => {
       if (!selectedAgentId || sending) return;
       setSending(true);
+      setIsReasoning(false);
 
-      setMessages(prev => [...prev, { id: 't-' + Date.now(), role: 'user', content, createdAt: new Date().toISOString() }]);
+      const userMsg: Message = { id: 't-' + Date.now(), role: 'user', content, createdAt: new Date().toISOString() };
+      setMessages(prev => [...prev, userMsg]);
 
       try {
-        const result = await sendMessage(selectedAgentId, content, threadId || undefined);
+        const result = await sendMessageStream(selectedAgentId, content, threadId || undefined, {
+          onText: (text) => { setIsReasoning(false); setStreamingText(text); },
+          onReasoning: () => { setIsReasoning(true); },
+          onFinish: (fullText) => {
+            const assistantMsg: Message = {
+              id: 'a-' + Date.now(),
+              role: 'assistant',
+              content: fullText,
+              createdAt: new Date().toISOString(),
+            };
+            setMessages(prev => [...prev, assistantMsg]);
+            setStreamingText('');
+            setIsReasoning(false);
+          },
+          onError: (err) => {
+            setMessages(prev => [...prev, {
+              id: 'e-' + Date.now(), role: 'assistant',
+              content: 'Error: ' + err,
+              createdAt: new Date().toISOString(),
+            }]);
+            setStreamingText('');
+            setIsReasoning(false);
+          },
+        });
         if (result.threadId) setThreadId(result.threadId);
-        const assistantMsg = result.messages.find(m => m.role === 'assistant');
-        if (assistantMsg) setMessages(prev => [...prev, assistantMsg]);
-      } catch {
-        setMessages(prev => [...prev, { id: 'e-' + Date.now(), role: 'assistant', content: 'Request failed. Check the Mastra server.', createdAt: new Date().toISOString() }]);
+      } catch (err: any) {
+        setMessages(prev => [...prev, {
+          id: 'e-' + Date.now(), role: 'assistant',
+          content: 'Request failed: ' + (err?.message || String(err)),
+          createdAt: new Date().toISOString(),
+        }]);
+        setStreamingText('');
       }
       setSending(false);
     },
@@ -44,7 +76,7 @@ export default function App() {
   );
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
-  const isNewChat = messages.length === 0;
+  const isEmpty = messages.length === 0 && !streamingText;
 
   return (
     <div style={{ display: 'flex', height: '100%' }}>
@@ -53,14 +85,15 @@ export default function App() {
         selectedAgentId={selectedAgentId}
         onSelectAgent={setSelectedAgentId}
         onNewChat={handleNewChat}
-        isNewChat={isNewChat}
       />
       <ChatView
         agent={selectedAgent}
         messages={messages}
+        streamingText={streamingText}
         sending={sending}
+        isReasoning={isReasoning}
         onSend={handleSend}
-        isNewChat={isNewChat}
+        isEmpty={isEmpty}
       />
     </div>
   );

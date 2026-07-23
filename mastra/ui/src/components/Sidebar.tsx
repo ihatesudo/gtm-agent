@@ -5,10 +5,9 @@ interface Props {
   selectedAgentId: string;
   onSelectAgent: (id: string) => void;
   onNewChat: () => void;
-  isNewChat: boolean;
 }
 
-export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewChat, isNewChat }: Props) {
+export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewChat }: Props) {
   return (
     <div style={{
       width: 240, background: 'var(--surface)', borderRight: '1px solid var(--border)',
