@@ -1,0 +1,24 @@
+{
+  "name": "gtm-agent-mastra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "mastra dev",
+    "build": "mastra build",
+    "deploy": "mastra build && wrangler deploy"
+  },
+  "dependencies": {
+    "@mastra/core": "latest",
+    "@mastra/memory": "latest",
+    "@mastra/libsql": "latest",
+    "@mastra/deployer-cloudflare": "latest",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "mastra": "latest",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0",
+    "wrangler": "^4.0.0"
+  }
+}

@@ -5,7 +5,7 @@
 > **One AI that doesn't try to do everything badly — it runs a whole marketing team.**
 > And it plugs straight into the 150+ marketing tools you already pay for.
 
-[**→ Try it in 60 seconds**](#quick-start) · [**→ See real output**](#see-real-output) · [**→ Browse the 150+ integrations**](#plugs-into-your-stack) · [**→ Meet the team**](#meet-the-team)
+[**→ Try it in 60 seconds**](#quick-start) · [**→ Mastra campaign engine**](#mastra-campaign-orchestrator) · [**→ See real output**](#see-real-output) · [**→ Browse the 150+ integrations**](#plugs-into-your-stack) · [**→ Meet the team**](#meet-the-team)
 
 Most marketing AIs are a single generalist: ask it about SEO and it's okay, ask it
 about paid ads and it's okay, ask it to write the launch email and it's… okay. The
@@ -55,12 +55,15 @@ instead of "it depends."
 | 📚 | **47 skill playbooks** | Deep, step-by-step expertise — copywriting, ads, SEO audits, ABM, churn prevention, a legendary-marketers advisory board, and more. |
 | 🧰 | **100+ platform integrations** | Reference guides for the tools real marketers use (Google Ads, GA4, Klaviyo, HubSpot, Apollo, Ahrefs, …), loaded on demand. |
 | 🧠 | **Layered prompting** | Director base → active role → active skill. Compose a specialist *with* a playbook for deep, focused execution. |
-| 💭 | **Live reasoning stream** | Watch the agent think token-by-token, or turn it off for clean output only. |
 | 💾 | **Deliverables on disk** | Final copy, strategies, keyword lists saved to `output/` as files — not lost in a chat scroll. |
 | 🔍 | **Grounded, not guessed** | Real-time facts (prices, competitor moves, keyword popularity) are searched before they're stated. |
 | 🇨🇳 | **Chinese-first** | Speaks your language; professional, specific, and to the point. |
-| 🔌 | **Bring-your-own model** | Google Vertex AI (ADC) or the Gemini Developer API (API key) — your choice. |
-| 🪶 | **Lean & hackable** | Plain LangGraph + Gemini, no heavyweight frameworks. Adding a role or skill is just dropping in a file. |
+| 🔌 | **Bring-your-own model** | OpenRouter (default), Vertex AI, Gemini API, or any LLM provider — your choice. |
+| ⚙️ | **Two runtimes, one brain** | [Python CLI](#quick-start) for terminal-first users + [Mastra engine](#mastra-campaign-orchestrator) for campaign workflow orchestration. Share the same roles, skills, and tool integrations. |
+| 🧩 | **Multi-turn conversations** | Mastra engine supports persistent chat sessions with memory of past turns. |
+| 🏗️ | **Campaign workflows** | Mastra engine runs structured 3-step plans: strategy → execution → review. |
+| 👔 | **Supervisor delegation** | Mastra engine's Director agent routes work to specialists automatically. |
+| 🧠 | **Cross-session memory** | Mastra engine remembers your product, ICP, brand voice, and past campaigns across sessions. |
 
 ---
 
@@ -264,6 +267,22 @@ selector in its sidebar; Chinese (`zh`) remains the default.
 uv run python -m marketing_agent --language en --role seo "Audit this site structure"
 ```
 
+### Mastra engine: campaign orchestration
+
+Prefer a structured campaign engine with auto-delegation and memory? Two commands:
+
+```bash
+cd mastra
+cp .env.example .env   # set OPENROUTER_API_KEY
+node run.mjs           # one-shot campaign generation
+```
+
+Or open the Mastra Studio for a visual chat interface:
+
+```bash
+cd mastra && npm run dev   # → http://localhost:4111
+```
+
 ### Web app with passwordless login
 
 The Reflex app is available through `make web`. It uses Appwrite Magic URL
@@ -382,26 +401,34 @@ Role and skill are re-resolved per task, so switching takes effect on the next p
 
 ## Future plan
 
-This is early. The team metaphor is the foundation; here's where it's headed.
+The team metaphor is the foundation; here's where it's headed.
+
+**Done in v0.2**
+- **A Director that delegates.** The Mastra engine's supervisor agent reads a brief,
+  decides which specialist(s) are needed, and routes the work automatically —
+  then stitches their outputs into one deliverable.
+- **Project memory.** The team remembers your product, ICP, brand voice, and past
+  campaigns across sessions — no more re-explaining context every time.
+- **Campaign workflows.** Structured 3-step plans (strategy → execution → review)
+  with state tracking and rollback.
+- **Multi-turn conversations.** Persistent chat sessions with full history.
 
 **Soon**
 - **Real platform execution, not just guides.** Today the 100+ integrations are
   how-to references the agent reads. The next step is *acting* — launching a Google
   Ads campaign, sending a Klaviyo flow, pulling live GA4 numbers — behind opt-in
   API keys.
-- **A Director that actually delegates.** Right now switching roles is manual. The
-  goal is a Director that reads a brief, decides which specialist(s) are needed, and
-  routes the work itself — then stitches their outputs into one deliverable.
-- **Project memory.** Let the team remember your product, ICP, brand voice, and past
-  campaigns so you stop re-explaining context every session.
-
-**Next**
+- **CLI → Mastra bridge.** A thin CLI wrapper that delegates to the Mastra HTTP API,
+  so `make run` and `npm run dev` are two interfaces to one engine.
 - **More seats at the table.** Brand/creative, product marketing, analytics, PR,
   partnerships — grow the org as the playbooks mature.
+
+**Next**
 - **Eval & self-improvement.** A scored suite of marketing tasks so each role's
   output is measured, not just felt.
-- **Web UI.** A friendlier front-end than the terminal for non-engineers — pick a
-  role from a sidebar, watch the team work.
+- **Web UI via Mastra Studio.** Mastra Studio already provides a chat UI out of
+  the box — customize it for non-engineers: role sidebar, campaign dashboard,
+  deliverable preview.
 
 **Later / exploring**
 - **Human-in-the-loop checkpoints** for anything spending money or sending to
@@ -415,26 +442,69 @@ thinking behind what's built so far.
 
 ---
 
-## How the pieces fit
+## Two runtimes, one brain
 
-- `marketing_agent/agent.py` — LangGraph ReAct agent. `SYSTEM_PROMPT` is the Director
-  persona; `build_agent(role=, skill=)` composes **Director base + role persona +
-  skill playbook**.
-- `marketing_agent/tools.py` — the 7 callable tools (`web_search`, `save_asset`,
-  `read_asset`, `list_assets`, `list_skills`, `read_skill_reference`,
-  `read_tool_guide`).
-- `roles/` — one YAML per role (kimi-cli style). `roles/TOOLS.md` = full tool
-  inventory + each role's preferred platform integrations.
-- `marketing_agent/roles_loader.py` / `skills_loader.py` — parse and serve
-  roles/skills from disk.
-- `skills/` — 47 marketing skill playbooks.
-- `tools/REGISTRY.md` — ~100 platform integration guides (loaded on demand).
+This repo ships **two runtimes** that share the same roles, skills, and platform integrations:
 
-### Conventions
+| | Python CLI | Mastra Engine |
+|---|---|---|
+| **Directory** | `marketing_agent/` | `mastra/` |
+| **Language** | Python (LangGraph) | TypeScript (Mastra) |
+| **Best for** | Quick one-shot tasks, REPL sessions | Multi-turn conversations, campaign orchestration, Studio UI |
+| **Memory** | Per-session only | Cross-session project memory |
+| **Delegation** | Manual `/role` switching | Automatic Director → specialist routing |
+| **Workflows** | — | Structured campaign plans (strategy → execute → review) |
 
+### Why two?
+
+The Python CLI was the original workhorse — a lean LangGraph agent that does one thing well. The Mastra engine is the **future direction**: it adds multi-turn conversations, structured campaign workflows, supervisor delegation, and cross-session memory on top of the same brain.
+
+Both share `roles/`, `skills/`, and `tools/` from this repo — there's no fork of the marketing knowledge.
+
+### Python CLI
+
+```
+marketing_agent/agent.py       LangGraph ReAct agent — SYSTEM_PROMPT is the Director
+marketing_agent/tools.py       7 callable tools (web_search, save_asset, …)
+roles/                         One YAML per specialist role
+skills/                        47 marketing skill playbooks
+tools/REGISTRY.md              ~100 platform integration guides (loaded on demand)
+```
+
+**Conventions:**
 - Real-time info (prices, news, competitor moves) → always `web_search` first.
 - Final long-form deliverables → `save_asset` to `output/` (kebab-case `.md`).
 - Platform how-to → `read_tool_guide` (e.g. `google-ads.md`).
+
+### Mastra campaign orchestrator (`mastra/`)
+
+A [Mastra](https://mastra.ai) engine that wraps the same marketing brain into a structured campaign orchestrator — think of it as the CLI graduated to a proper AI team.
+
+```
+mastra/src/mastra/agents/director.ts          Supervisor agent — routes work to specialists
+mastra/src/mastra/agents/specialists.ts       5 specialist sub-agents
+mastra/src/mastra/workflows/campaign-workflow.ts  3-step campaign pipeline
+mastra/src/mastra/memory/project-memory.ts     Cross-session project memory (product, ICP, voice, campaigns)
+mastra/src/mastra/tools/gtm-tools.ts          Mastra tools wrapping the Python tools
+```
+
+```bash
+cd mastra
+cp .env.example .env   # set OPENROUTER_API_KEY
+npm run dev            # Mastra Studio at http://localhost:4111
+node run.mjs           # one-shot campaign generation
+```
+
+When you run the Mastra engine, it calls the same Python tool CLIs under the hood via a thin bridge layer. New development happens in Mastra; the Python CLI is maintained for terminal users who prefer a REPL.
+
+### Can they merge?
+
+Not in the same process — one is Python, the other is TypeScript. But the **Mastra engine is where new features land** (campaigns, delegation, memory). The long-term vision is for the CLI to delegate to the Mastra HTTP API, so you get one brain with two interfaces.
+
+For now:
+- **Want a quick terminal conversation?** → `make run`
+- **Want campaign plans, multi-turn chats, and a visual Studio?** → `cd mastra && npm run dev`
+- **Want both?** → Keep them in the same repo. They share roles, skills, and tools. No duplication.
 
 ## Housekeeping
 
@@ -446,7 +516,7 @@ make clean     # remove .venv and build artifacts
 
 ## Ready to put a marketing team in your terminal?
 
-**[→ Get started in 60 seconds](#quick-start)** · **[→ See what it produces](#see-real-output)** · **[→ Explore 150+ integrations](#plugs-into-your-stack)**
+**[→ Get started in 60 seconds](#quick-start)** · **[→ Mastra campaign engine](#mastra-campaign-orchestrator)** · **[→ See what it produces](#see-real-output)** · **[→ Explore 150+ integrations](#plugs-into-your-stack)**
 
 Founders, marketers, and growth teams use this to ship agency-grade work without the
 agency. Star ⭐ the repo if it saves you a week — contributions, new roles, and new
