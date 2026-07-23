@@ -1,0 +1,14 @@
+version: 1
+provider:
+  name: openrouter
+  title: "OpenRouter"
+  description: "OpenRouter — access 200+ models via OpenAI-compatible API (GPT-4, Claude, Llama, etc.)"
+  base_url: "https://openrouter.ai/api/v1"
+  model: "openrouter/auto"
+  api_key_env: "OPENROUTER_API_KEY"
+  capabilities:
+    thinking: false
+    tools: true
+    vision: false
+  currency: "USD"
+  website: "https://openrouter.ai"

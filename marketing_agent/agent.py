@@ -132,7 +132,13 @@ def build_model(include_thoughts: bool = True, provider: str | None = None):
     default (falls back to ``"gemini"``).
     """
     if provider is None:
-        provider = os.environ.get("PROVIDER", "gemini").strip().lower()
+        # Prefer PROVIDER; fall back to GENAI_PROVIDER (documented in README/.env)
+        # so that GENAI_PROVIDER=openrouter works without setting PROVIDER.
+        provider = (
+            os.environ.get("PROVIDER")
+            or os.environ.get("GENAI_PROVIDER")
+            or "gemini"
+        ).strip().lower()
     if provider in (None, "", "gemini"):
         return _build_gemini(include_thoughts=include_thoughts)
     return _build_openai_compatible(provider)

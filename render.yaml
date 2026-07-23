@@ -5,6 +5,8 @@ services:
     plan: free
     healthCheckPath: /ping
     envVars:
+      - key: PROVIDER
+        value: openrouter
       - key: GENAI_PROVIDER
         value: openrouter
       - key: OPENROUTER_API_KEY

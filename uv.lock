@@ -585,50 +585,6 @@ wheels = [
 ]
 
 [[package]]
-name = "goog-demo"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "ddgs" },
-    { name = "duckduckgo-search" },
-    { name = "google-genai" },
-    { name = "langchain" },
-    { name = "langchain-community" },
-    { name = "langchain-google-genai" },
-    { name = "langchain-openai" },
-    { name = "langgraph" },
-    { name = "pyyaml" },
-    { name = "reflex" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pip" },
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ddgs", specifier = ">=9.14.4" },
-    { name = "duckduckgo-search", specifier = ">=6.0.0" },
-    { name = "google-genai", specifier = ">=2.10.0" },
-    { name = "langchain", specifier = ">=0.3.0" },
-    { name = "langchain-community", specifier = ">=0.3.0" },
-    { name = "langchain-google-genai", specifier = ">=2.1.0" },
-    { name = "langchain-openai", specifier = ">=0.3.0" },
-    { name = "langchain-openai", specifier = ">=1.4.0" },
-    { name = "langgraph", specifier = ">=0.4.0" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "reflex", specifier = ">=0.8.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pip", specifier = ">=26.1.2" },
-    { name = "pytest", specifier = ">=9.1.1" },
-]
-
-[[package]]
 name = "google-auth"
 version = "2.55.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1285,6 +1241,49 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/06/ff/7841249c247aa650a76b9ee4bbaeae59370dc8bfd2f6c01f3630c35eb134/markdown_it_py-4.2.0.tar.gz", hash = "sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49", size = 82454, upload-time = "2026-05-07T12:08:28.36Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl", hash = "sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a", size = 91687, upload-time = "2026-05-07T12:08:27.182Z" },
+]
+
+[[package]]
+name = "marketing-agent"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "ddgs" },
+    { name = "duckduckgo-search" },
+    { name = "google-genai" },
+    { name = "langchain" },
+    { name = "langchain-community" },
+    { name = "langchain-google-genai" },
+    { name = "langchain-openai" },
+    { name = "langgraph" },
+    { name = "pyyaml" },
+    { name = "reflex" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pip" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ddgs", specifier = ">=9.14.4" },
+    { name = "duckduckgo-search", specifier = ">=6.0.0" },
+    { name = "google-genai", specifier = ">=2.10.0" },
+    { name = "langchain", specifier = ">=0.3.0" },
+    { name = "langchain-community", specifier = ">=0.3.0" },
+    { name = "langchain-google-genai", specifier = ">=2.1.0" },
+    { name = "langchain-openai", specifier = ">=1.4.0" },
+    { name = "langgraph", specifier = ">=0.4.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "reflex", specifier = ">=0.8.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pip", specifier = ">=26.1.2" },
+    { name = "pytest", specifier = ">=9.1.1" },
 ]
 
 [[package]]

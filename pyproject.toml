@@ -1,7 +1,7 @@
 [project]
-name = "goog-demo"
+name = "marketing-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI marketing agent — a commandable growth team with 7 specialists, 47 skill playbooks, and 150+ platform integrations"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -9,12 +9,11 @@ dependencies = [
     "langgraph>=0.4.0",
     "langchain>=0.3.0",
     "langchain-google-genai>=2.1.0",
-    "langchain-openai>=0.3.0",
+    "langchain-openai>=1.4.0",
     "langchain-community>=0.3.0",
     "duckduckgo-search>=6.0.0",
     "ddgs>=9.14.4",
     "pyyaml>=6.0",
-    "langchain-openai>=1.4.0",
     "reflex>=0.8.0",
 ]
 
