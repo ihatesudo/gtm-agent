@@ -8,10 +8,9 @@ interface Props {
   sending: boolean;
   isReasoning: boolean;
   onSend: (content: string) => void;
-  isEmpty: boolean;
 }
 
-export default function ChatView({ agent, messages, streamingText, sending, isReasoning, onSend, isEmpty }: Props) {
+export default function ChatView({ agent, messages, streamingText, sending, isReasoning, onSend }: Props) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -37,13 +36,13 @@ export default function ChatView({ agent, messages, streamingText, sending, isRe
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100%' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100%', background: 'var(--main-bg)' }}>
       <div style={{
         padding: '14px 24px', borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
       }}>
         <div style={{
-          width: 28, height: 28, borderRadius: 6, background: 'var(--accent-subtle)',
+          width: 28, height: 28, borderRadius: 6, background: 'var(--surface-hover)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
         }}>
           {agent ? agent.id === 'director' ? '🎯' : '🧑‍💼' : '?'}
@@ -57,108 +56,95 @@ export default function ChatView({ agent, messages, streamingText, sending, isRe
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
-        {isEmpty ? (
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)', gap: 12,
-          }}>
-            <div style={{ fontSize: 40, opacity: 0.6 }}>🎯</div>
-            <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-secondary)' }}>
-              {agent ? `Chat with ${agent.name}` : 'Select an agent'}
-            </div>
-            <div style={{ fontSize: 13, textAlign: 'center', maxWidth: 360, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
-              Describe your marketing goal — product, audience, budget, timeline.
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 680, margin: '0 auto' }}>
-            {messages.map(msg => {
-              const isUser = msg.role === 'user';
-              return (
-                <div key={msg.id} style={{ display: 'flex', gap: 10, flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: 5,
-                    background: isUser ? 'var(--accent-subtle)' : 'var(--surface-hover)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, flexShrink: 0, marginTop: 2,
-                  }}>
-                    {isUser ? '👤' : agent?.id === 'director' ? '🎯' : '🤖'}
-                  </div>
-                  <div style={{
-                    background: isUser ? 'var(--user-msg)' : 'var(--agent-msg)',
-                    border: isUser ? 'none' : '1px solid var(--border)',
-                    borderRadius: 10,
-                    borderBottomRightRadius: isUser ? 4 : 10,
-                    borderBottomLeftRadius: isUser ? 10 : 4,
-                    padding: '10px 14px', maxWidth: '88%', fontSize: 14,
-                    lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--text)',
-                  }}>
-                    {msg.content}
-                  </div>
-                </div>
-              );
-            })}
-            {sending && !streamingText && (
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 680, margin: '0 auto' }}>
+          {messages.map(msg => {
+            const isUser = msg.role === 'user';
+            return (
+              <div key={msg.id} style={{ display: 'flex', gap: 10, flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
                 <div style={{
                   width: 24, height: 24, borderRadius: 5,
-                  background: 'var(--surface-hover)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, flexShrink: 0,
-                }}>
-                  {agent?.id === 'director' ? '🎯' : '🤖'}
-                </div>
-                <div style={{
-                  background: 'var(--agent-msg)', border: '1px solid var(--border)',
-                  borderRadius: 10, borderBottomLeftRadius: 4,
-                  padding: '10px 16px', fontSize: 13, color: 'var(--text-tertiary)',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}>
-                  {isReasoning ? (
-                    <>Analyzing<span style={{ display:'inline-flex', gap:1 }}><span style={{ animation:'dotDot 1.5s infinite', animationDelay:'0s' }}>.</span><span style={{ animation:'dotDot 1.5s infinite', animationDelay:'0.3s' }}>.</span><span style={{ animation:'dotDot 1.5s infinite', animationDelay:'0.6s' }}>.</span></span></>
-                  ) : (
-                    <><span className="pulse" /></>
-                  )}
-                </div>
-              </div>
-            )}
-            {streamingText && (
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{
-                  width: 24, height: 24, borderRadius: 5,
-                  background: 'var(--surface-hover)',
+                  background: isUser ? 'var(--accent)' : 'var(--surface-hover)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 12, flexShrink: 0, marginTop: 2,
+                  color: isUser ? '#fff' : 'var(--text)',
                 }}>
-                  {agent?.id === 'director' ? '🎯' : '🤖'}
+                  {isUser ? 'U' : agent?.id === 'director' ? '🎯' : '🤖'}
                 </div>
                 <div style={{
-                  background: 'var(--agent-msg)', border: '1px solid var(--border)',
-                  borderRadius: 10, borderBottomLeftRadius: 4,
+                  background: isUser ? 'var(--accent)' : 'var(--surface)',
+                  border: isUser ? 'none' : '1px solid var(--border)',
+                  borderRadius: 10,
+                  borderBottomRightRadius: isUser ? 4 : 10,
+                  borderBottomLeftRadius: isUser ? 10 : 4,
                   padding: '10px 14px', maxWidth: '88%', fontSize: 14,
-                  lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--text)',
+                  lineHeight: 1.65, whiteSpace: 'pre-wrap',
+                  color: isUser ? '#fff' : 'var(--text)',
                 }}>
-                  {streamingText}
-                  <span style={{
-                    display: 'inline-block', width: 6, height: 14,
-                    background: 'var(--accent)', marginLeft: 2,
-                    borderRadius: 1, verticalAlign: 'text-bottom',
-                    animation: 'blink 0.8s step-end infinite',
-                  }} />
+                  {msg.content}
                 </div>
               </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-        )}
+            );
+          })}
+          {sending && !streamingText && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: 5,
+                background: 'var(--surface-hover)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, flexShrink: 0,
+              }}>
+                {agent?.id === 'director' ? '🎯' : '🤖'}
+              </div>
+              <div style={{
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 10, borderBottomLeftRadius: 4,
+                padding: '10px 16px', fontSize: 13, color: 'var(--text-tertiary)',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                {isReasoning ? (
+                  <>Analyzing<span style={{ display:'inline-flex', gap:1 }}><span style={{ animation:'dotDot 1.5s infinite', animationDelay:'0s' }}>.</span><span style={{ animation:'dotDot 1.5s infinite', animationDelay:'0.3s' }}>.</span><span style={{ animation:'dotDot 1.5s infinite', animationDelay:'0.6s' }}>.</span></span></>
+                ) : (
+                  <><span className="pulse" /></>
+                )}
+              </div>
+            </div>
+          )}
+          {streamingText && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: 5,
+                background: 'var(--surface-hover)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, flexShrink: 0, marginTop: 2,
+              }}>
+                {agent?.id === 'director' ? '🎯' : '🤖'}
+              </div>
+              <div style={{
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 10, borderBottomLeftRadius: 4,
+                padding: '10px 14px', maxWidth: '88%', fontSize: 14,
+                lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--text)',
+              }}>
+                {streamingText}
+                <span style={{
+                  display: 'inline-block', width: 6, height: 14,
+                  background: 'var(--accent)', marginLeft: 2,
+                  borderRadius: 1, verticalAlign: 'text-bottom',
+                  animation: 'blink 0.8s step-end infinite',
+                }} />
+              </div>
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
       </div>
 
-      <div style={{ padding: '16px 24px 20px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+      <div style={{ padding: '16px 24px 20px', borderTop: '1px solid var(--border)', flexShrink: 0, background: 'var(--main-bg)' }}>
         <div style={{ display: 'flex', gap: 8, maxWidth: 680, margin: '0 auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 4, transition: 'all 0.2s' }}
           onFocusCapture={e => {
             const el = e.currentTarget as HTMLDivElement;
             el.style.borderColor = 'var(--accent)';
-            el.style.boxShadow = '0 0 0 3px rgba(91,141,239,0.15)';
+            el.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.08)';
           }}
           onBlurCapture={e => {
             const el = e.currentTarget as HTMLDivElement;

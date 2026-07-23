@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Agent, Message } from './types';
 import { fetchAgents, sendMessageStream } from './lib/api';
 import Sidebar from './components/Sidebar';
+import { WelcomeView } from './components/WelcomeView';
 import ChatView from './components/ChatView';
 
 export default function App() {
@@ -86,15 +87,18 @@ export default function App() {
         onSelectAgent={setSelectedAgentId}
         onNewChat={handleNewChat}
       />
-      <ChatView
-        agent={selectedAgent}
-        messages={messages}
-        streamingText={streamingText}
-        sending={sending}
-        isReasoning={isReasoning}
-        onSend={handleSend}
-        isEmpty={isEmpty}
-      />
+      {isEmpty ? (
+        <WelcomeView onSend={handleSend} sending={sending} />
+      ) : (
+        <ChatView
+          agent={selectedAgent}
+          messages={messages}
+          streamingText={streamingText}
+          sending={sending}
+          isReasoning={isReasoning}
+          onSend={handleSend}
+        />
+      )}
     </div>
   );
 }
