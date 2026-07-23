@@ -74,6 +74,12 @@ mastra-prd: ## Build for Cloudflare Workers deployment
 mastra-run: ## One-shot campaign via Mastra CLI
 	@$(MASTRA) && npx tsx run.mjs
 
+mastra-smoke: ## Run SSE smoke tests (no server needed)
+	@$(MASTRA) && npm run test:smoke
+
+mastra-smoke-live: ## Run live smoke tests (server must be running on :4111)
+	@$(MASTRA) && npm run test:smoke:live
+
 # ─── Web/Workers targets ──────────────────────────────────────────────
 
 web-dev: ## Run the Workers dev server at http://localhost:8787

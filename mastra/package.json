@@ -11,7 +11,9 @@
     "ui:build": "(cd ui && npm run build) && cp -r ui/dist/* .mastra/output/studio/",
     "prd": "mastra build",
     "deploy": "mastra build && wrangler deploy",
-    "postbuild": "npm run ui:build"
+    "postbuild": "npm run ui:build",
+    "test:smoke": "node ui/scripts/smoke-test.mjs",
+    "test:smoke:live": "MASTRA_URL=http://localhost:4111 node ui/scripts/smoke-test.mjs"
   },
   "dependencies": {
     "@mastra/core": "latest",
