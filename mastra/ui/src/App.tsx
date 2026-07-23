@@ -5,6 +5,33 @@ import Sidebar from './components/Sidebar';
 import { WelcomeView } from './components/WelcomeView';
 import ChatView from './components/ChatView';
 
+interface ThreadMeta {
+  id: string;
+  title: string;
+  agentId: string;
+}
+
+const STORAGE_KEY = 'gtmagent_threads';
+
+function loadThreads(): ThreadMeta[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveThreads(threads: ThreadMeta[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
+  } catch { /* storage full */ }
+}
+
+function summarize(content: string): string {
+  return content.length > 60 ? content.slice(0, 60) + '…' : content;
+}
+
 export default function App() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
@@ -13,6 +40,7 @@ export default function App() {
   const [streamingText, setStreamingText] = useState('');
   const [isReasoning, setIsReasoning] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [threads, setThreads] = useState<ThreadMeta[]>(loadThreads);
 
   useEffect(() => {
     fetchAgents().then(list => {
@@ -62,7 +90,16 @@ export default function App() {
             setIsReasoning(false);
           },
         });
-        if (result.threadId) setThreadId(result.threadId);
+        if (result.threadId) {
+          setThreadId(result.threadId);
+          setThreads(prev => {
+            const existing = prev.find(t => t.id === result.threadId);
+            if (existing) return prev;
+            const updated = [{ id: result.threadId!, title: summarize(content), agentId: selectedAgentId }, ...prev];
+            saveThreads(updated);
+            return updated;
+          });
+        }
       } catch (err: any) {
         setMessages(prev => [...prev, {
           id: 'e-' + Date.now(), role: 'assistant',
@@ -86,6 +123,7 @@ export default function App() {
         selectedAgentId={selectedAgentId}
         onSelectAgent={setSelectedAgentId}
         onNewChat={handleNewChat}
+        threads={threads}
       />
       {isEmpty ? (
         <WelcomeView onSend={handleSend} sending={sending} />
