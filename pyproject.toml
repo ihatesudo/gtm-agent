@@ -14,10 +14,12 @@ dependencies = [
     "duckduckgo-search>=6.0.0",
     "ddgs>=9.14.4",
     "pyyaml>=6.0",
+    "langchain-openai>=1.4.0",
     "reflex>=0.8.0",
 ]
 
 [dependency-groups]
 dev = [
     "pip>=26.1.2",
+    "pytest>=9.1.1",
 ]

@@ -1,0 +1,14 @@
+version: 1
+provider:
+  name: glm
+  title: "GLM (Zhipu)"
+  description: "GLM-5.2 — strong thinking/reasoning + vision, OpenAI-compatible"
+  base_url: "https://open.bigmodel.cn/api/paas/v4/"
+  model: "glm-5.2"
+  api_key_env: "GLM_API_KEY"
+  capabilities:
+    thinking: true
+    tools: true
+    vision: true
+  currency: "CNY"
+  website: "https://bigmodel.cn"

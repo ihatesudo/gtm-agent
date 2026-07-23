@@ -1,9 +1,8 @@
 """LangGraph-based marketing agent.
 
-High-level approach: langgraph.prebuilt.create_react_agent (provides a built-in
-ReAct loop, tool calling, and message-state management). The underlying model is
-ChatGoogleGenerativeAI (gemini-3.5-flash, reusing GEMINI_API_KEY from the
-environment), wired up with the real tools defined in marketing_agent.tools.
+Supports multiple LLM providers via the ``provider`` parameter.
+Gemini is the default; OpenAI-compatible providers (DeepSeek, GLM, etc.)
+use ``ChatOpenAI`` with a provider-specific base URL and API key.
 """
 
 from __future__ import annotations
@@ -11,6 +10,7 @@ from __future__ import annotations
 import os
 
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
 from .tools import ALL_TOOLS
@@ -67,41 +67,21 @@ General principles:
 SYSTEM_PROMPT = SYSTEM_PROMPT_ZH
 
 
-def build_model(include_thoughts: bool = True):
-    """Build the Gemini chat model.
-
-    Two auth backends, selected by the ``GENAI_PROVIDER`` env var (or the
-    ``GOOGLE_GENAI_USE_VERTEXAI`` flag):
-
-    - ``vertex`` (default here): Google Cloud Vertex AI. Authenticates via
-      Application Default Credentials (e.g. ``gcloud auth application-default
-      login``) — no API key needed. Requires ``GOOGLE_CLOUD_PROJECT`` and uses
-      ``GOOGLE_CLOUD_LOCATION`` (default ``us-central1``).
-    - ``api``: Gemini Developer API (Generative Language API). Authenticates
-      with the ``GEMINI_API_KEY`` env var.
-    - ``openrouter``: OpenRouter's OpenAI-compatible API. Authenticates with
-      ``OPENROUTER_API_KEY`` and uses ``OPENROUTER_MODEL``.
-
-    When include_thoughts=True the model emits a human-readable reasoning
-    (thinking) trace; combined with the CLI's streaming output you can watch
-    the thinking tokens appear one by one. When disabled, the model no longer
-    returns thinking blocks and only outputs the final answer.
-    """
+def _build_gemini(include_thoughts: bool) -> ChatGoogleGenerativeAI:
+    """Build the Gemini chat model (Vertex ADC or Developer API)."""
     model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    provider = os.environ.get("GENAI_PROVIDER", "").strip().lower()
-    use_vertex = provider == "vertex" or os.environ.get(
+    backend = os.environ.get("GENAI_PROVIDER", "").strip().lower()
+    use_vertex = backend == "vertex" or os.environ.get(
         "GOOGLE_GENAI_USE_VERTEXAI", ""
     ).strip().lower() == "true"
 
     common = dict(
         model=model,
-        temperature=0.7,  # marketing benefits from a bit of creativity
-        include_thoughts=include_thoughts,  # show reasoning trace when on
+        temperature=0.7,
+        include_thoughts=include_thoughts,
     )
 
     if use_vertex:
-        # Vertex uses ADC; the project/location are read by the google-genai SDK
-        # from the env vars below.
         os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "us-central1")
         project = os.environ.get("GOOGLE_CLOUD_PROJECT")
         if not project:
@@ -111,35 +91,51 @@ def build_model(include_thoughts: bool = True):
             )
         return ChatGoogleGenerativeAI(**common)
 
-    if provider == "openrouter":
-        from langchain_openai import ChatOpenAI
-
-        api_key = os.environ.get("OPENROUTER_API_KEY")
-        if not api_key:
-            raise RuntimeError(
-                "OPENROUTER_API_KEY is missing. Create an API key at OpenRouter "
-                "and set it in .env."
-            )
-        headers = {"X-OpenRouter-Title": "GTM Marketing Agent"}
-        site_url = os.environ.get("OPENROUTER_SITE_URL", "").strip()
-        if site_url:
-            headers["HTTP-Referer"] = site_url
-        return ChatOpenAI(
-            model=os.environ.get("OPENROUTER_MODEL", "openrouter/auto"),
-            api_key=api_key,
-            base_url="https://openrouter.ai/api/v1",
-            default_headers=headers,
-            temperature=0.7,
-        )
-
-    # Developer API path: needs a valid API key.
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "GEMINI_API_KEY is missing. Set GENAI_PROVIDER=openrouter with an "
-            "OPENROUTER_API_KEY, or configure Gemini/Vertex. See .env.sample."
+            "GEMINI_API_KEY is missing and GENAI_PROVIDER is not 'vertex'. "
+            "Either set a valid Gemini API key, or use Vertex "
+            "(GENAI_PROVIDER=vertex with ADC). See .env."
         )
     return ChatGoogleGenerativeAI(google_api_key=api_key, **common)
+
+
+def _build_openai_compatible(config_name: str) -> ChatOpenAI:
+    """Build ChatOpenAI for a provider config (DeepSeek, GLM, etc.)."""
+    from . import providers_loader
+
+    config = providers_loader.load_provider(config_name)
+    api_key = os.environ.get(config.api_key_env)
+    if not api_key:
+        raise RuntimeError(
+            f"{config.api_key_env} is required for provider {config.name!r}. "
+            f"Set it in your environment."
+        )
+    return ChatOpenAI(
+        model=config.model,
+        openai_api_base=config.base_url,
+        openai_api_key=api_key,
+        temperature=0.7,
+    )
+
+
+def build_model(include_thoughts: bool = True, provider: str | None = None):
+    """Build a chat model for the given provider.
+
+    - ``provider=None`` or ``"gemini"`` — Gemini (Vertex ADC or Developer API).
+    - ``provider="deepseek"`` — DeepSeek via OpenAI-compatible adapter.
+    - Any other provider name — looked up in ``providers/`` and built via
+      ``ChatOpenAI``.
+
+    When *provider* is unspecified, the ``PROVIDER`` env var is read as the
+    default (falls back to ``"gemini"``).
+    """
+    if provider is None:
+        provider = os.environ.get("PROVIDER", "gemini").strip().lower()
+    if provider in (None, "", "gemini"):
+        return _build_gemini(include_thoughts=include_thoughts)
+    return _build_openai_compatible(provider)
 
 
 def build_agent(
@@ -147,6 +143,7 @@ def build_agent(
     skill: str | None = None,
     role: str | None = None,
     language: str = "zh",
+    provider: str | None = None,
 ):
     """Build and return the compiled LangGraph ReAct agent.
 
@@ -160,10 +157,13 @@ def build_agent(
 
     ``skill`` optionally activates a marketing skill playbook (from skills/),
     appended after the role block. Pass ``None`` for the general Director agent.
+
+    ``provider`` optionally selects an LLM provider (from providers/). When
+    ``None``, the ``PROVIDER`` env var is read (falls back to ``"gemini"``).
     """
     prompt = _compose_prompt(skill=skill, role=role, language=language)
     return create_react_agent(
-        model=build_model(include_thoughts=include_thoughts),
+        model=build_model(include_thoughts=include_thoughts, provider=provider),
         tools=ALL_TOOLS,
         prompt=prompt,
     )

@@ -1,0 +1,14 @@
+version: 1
+provider:
+  name: gemini
+  title: "Gemini (Google)"
+  description: "Gemini 2.5 Flash — built-in default (Vertex ADC or Developer API)"
+  base_url: ""
+  model: ""
+  api_key_env: "GEMINI_API_KEY"
+  capabilities:
+    thinking: true
+    tools: true
+    vision: true
+  currency: "USD"
+  website: "https://ai.google.dev"

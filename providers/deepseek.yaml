@@ -1,0 +1,14 @@
+version: 1
+provider:
+  name: deepseek
+  title: "DeepSeek"
+  description: "DeepSeek v4 — strong reasoning/thinking, OpenAI-compatible"
+  base_url: "https://api.deepseek.com"
+  model: "deepseek-v4-pro"
+  api_key_env: "DEEPSEEK_API_KEY"
+  capabilities:
+    thinking: true
+    tools: true
+    vision: false
+  currency: "CNY"
+  website: "https://platform.deepseek.com"
