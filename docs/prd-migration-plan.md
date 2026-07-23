@@ -45,6 +45,7 @@ mastra/ui/src/
 
 ### 📍 Phase 1: Style Token Migration & Setup (Weeks 1)
 - Copy font imports (`Instrument Serif` & `Inter`) and CSS variables from our custom [style.css](file:///Users/miczhuang/.herdr/worktrees/gtm-agent/worktree-rapid-river-e646/workers/frontend/style.css) to `mastra/ui/src/index.css`.
+- **UI/UX Max Skill Color Polish**: Optimize the color palette for maximum visual quality. Avoid generic colors; use HSL-tailored tones, sleek dark shades for the sidebar, and harmonious off-white light shades for the workspace to create a highly premium, state-of-the-art visual experience.
 - Set up CSS classes for layouts: `.split-pane-layout`, `.browser-window`, `.prompt-box-card`, etc.
 - Integrate Tailwind configs if needed (or maintain clean custom Vanilla CSS imports inside the React bundle).
 
