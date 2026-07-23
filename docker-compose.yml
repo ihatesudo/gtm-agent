@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  sqld:
+    image: ghcr.io/tursodatabase/libsql-server:latest
+    container_name: gtm-agent-sqld
+    ports:
+      - "8080:8080"
+    volumes:
+      - sqld-data:/var/lib/sqld
+    environment:
+      - SQLD_NODE=primary
+    restart: unless-stopped
+
+volumes:
+  sqld-data:

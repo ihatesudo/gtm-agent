@@ -16,6 +16,7 @@ interface StreamCallbacks {
   onFinish: (fullText: string, reasoning?: string) => void;
   onError: (err: string) => void;
   onReasoning?: (text: string) => void;
+  onToolCall?: (call: { tool: string; input: string; output?: string }) => void;
 }
 
 function genId(): string {
@@ -111,6 +112,17 @@ function parseSSE(
               if (reasoningDelta) {
                 accumulatedReasoning += reasoningDelta;
                 callbacks?.onReasoning?.(accumulatedReasoning);
+              }
+            } else if (type === 'step-finish') {
+              const toolCalls = parsed.payload?.stepResult?.output?.toolCalls;
+              if (toolCalls && Array.isArray(toolCalls)) {
+                for (const tc of toolCalls) {
+                  callbacks?.onToolCall?.({
+                    tool: tc.toolName || tc.tool || 'unknown',
+                    input: JSON.stringify(tc.arguments || tc.args || {}),
+                    output: tc.result ? JSON.stringify(tc.result).slice(0, 2000) : undefined,
+                  });
+                }
               }
             } else if (type === 'finish' || type === 'complete' || type === 'done' || type === 'text-end') {
               console.log('[SSE] finish event, accumulated.length=%d', accumulated.length);

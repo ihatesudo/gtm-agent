@@ -16,6 +16,7 @@ export interface ToolCall {
   tool: string;
   input: string;
   output?: string;
+  status: 'pending' | 'success' | 'error';
 }
 
 export interface Message {
