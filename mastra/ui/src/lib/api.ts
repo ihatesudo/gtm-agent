@@ -13,9 +13,9 @@ export async function fetchAgents(): Promise<Agent[]> {
 
 interface StreamCallbacks {
   onText: (delta: string) => void;
-  onFinish: (fullText: string) => void;
+  onFinish: (fullText: string, reasoning?: string) => void;
   onError: (err: string) => void;
-  onReasoning?: () => void;
+  onReasoning?: (text: string) => void;
 }
 
 function genId(): string {
@@ -67,7 +67,7 @@ function parseSSE(
 ): Promise<{ threadId: string }> {
   return new Promise((resolve) => {
     let accumulated = '';
-    let currentText = '';
+    let accumulatedReasoning = '';
     let resolved = false;
 
     const reader = res.body?.getReader();
@@ -92,7 +92,7 @@ function parseSSE(
             console.log('[SSE] [DONE] received');
             if (!resolved) {
               resolved = true;
-              callbacks?.onFinish(accumulated);
+              callbacks?.onFinish(accumulated, accumulatedReasoning);
               resolve({ threadId });
             }
             return;
@@ -107,12 +107,16 @@ function parseSSE(
                 callbacks?.onText(accumulated);
               }
             } else if (type === 'reasoning-delta') {
-              callbacks?.onReasoning?.();
+              const reasoningDelta = parsed.payload?.text || '';
+              if (reasoningDelta) {
+                accumulatedReasoning += reasoningDelta;
+                callbacks?.onReasoning?.(accumulatedReasoning);
+              }
             } else if (type === 'finish' || type === 'complete' || type === 'done' || type === 'text-end') {
               console.log('[SSE] finish event, accumulated.length=%d', accumulated.length);
               if (!resolved) {
                 resolved = true;
-                callbacks?.onFinish(accumulated);
+                callbacks?.onFinish(accumulated, accumulatedReasoning);
                 resolve({ threadId });
               }
               return;
@@ -136,7 +140,7 @@ function parseSSE(
           if (!resolved) {
             console.warn('[SSE] stream ended without finish event, accumulated.length=%d', accumulated.length);
             resolved = true;
-            callbacks?.onFinish(accumulated);
+            callbacks?.onFinish(accumulated, accumulatedReasoning);
             resolve({ threadId });
           }
           return;

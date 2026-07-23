@@ -38,6 +38,7 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
   const [streamingText, setStreamingText] = useState('');
+  const [streamingReasoning, setStreamingReasoning] = useState('');
   const [isReasoning, setIsReasoning] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [threads, setThreads] = useState<ThreadMeta[]>(loadThreads);
@@ -52,6 +53,7 @@ export default function App() {
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setStreamingText('');
+    setStreamingReasoning('');
     setIsReasoning(false);
     setThreadId(null);
   }, []);
@@ -68,16 +70,18 @@ export default function App() {
       try {
         const result = await sendMessageStream(selectedAgentId, content, threadId || undefined, {
           onText: (text) => { setIsReasoning(false); setStreamingText(text); },
-          onReasoning: () => { setIsReasoning(true); },
-          onFinish: (fullText) => {
+          onReasoning: (reasoning) => { setIsReasoning(true); setStreamingReasoning(reasoning); },
+          onFinish: (fullText, reasoning) => {
             const assistantMsg: Message = {
               id: 'a-' + Date.now(),
               role: 'assistant',
               content: fullText,
+              reasoning,
               createdAt: new Date().toISOString(),
             };
             setMessages(prev => [...prev, assistantMsg]);
             setStreamingText('');
+            setStreamingReasoning('');
             setIsReasoning(false);
           },
           onError: (err) => {
@@ -131,9 +135,10 @@ export default function App() {
         <ChatView
           agent={selectedAgent}
           messages={messages}
-          streamingText={streamingText}
-          sending={sending}
-          isReasoning={isReasoning}
+            streamingText={streamingText}
+            streamingReasoning={streamingReasoning}
+            sending={sending}
+            isReasoning={isReasoning}
           onSend={handleSend}
         />
       )}

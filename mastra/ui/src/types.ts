@@ -11,9 +11,18 @@ export interface Thread {
   createdAt: string;
 }
 
+export interface ToolCall {
+  id: string;
+  tool: string;
+  input: string;
+  output?: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  reasoning?: string;
+  toolCalls?: ToolCall[];
   createdAt: string;
 }

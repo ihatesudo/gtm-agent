@@ -5,12 +5,48 @@ interface Props {
   agent?: Agent;
   messages: Message[];
   streamingText: string;
+  streamingReasoning?: string;
   sending: boolean;
   isReasoning: boolean;
   onSend: (content: string) => void;
 }
 
-export default function ChatView({ agent, messages, streamingText, sending, isReasoning, onSend }: Props) {
+function ReasoningAccordion({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const lines = text.split('\n').filter(Boolean);
+  const summary = lines.length <= 1 ? text.slice(0, 80) : lines[0].slice(0, 80);
+
+  return (
+    <div style={{
+      marginBottom: 10, borderRadius: 8, overflow: 'hidden',
+      border: '1px solid var(--border)', background: 'var(--surface)',
+    }}>
+      <button onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+          padding: '6px 10px', border: 'none', background: 'var(--surface-hover)',
+          cursor: 'pointer', fontSize: 12, color: 'var(--text-tertiary)',
+          fontFamily: 'inherit', textAlign: 'left',
+        }}
+      >
+        <span style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 10 }}>▶</span>
+        <span style={{ opacity: 0.6 }}>🧠</span>
+        {open ? 'Thought process' : `Thought process · ${summary}${text.length > 80 ? '…' : ''}`}
+      </button>
+      {open && (
+        <div style={{
+          padding: '8px 12px', fontSize: 13, lineHeight: 1.6,
+          color: 'var(--text-secondary)', whiteSpace: 'pre-wrap',
+          borderTop: '1px solid var(--border)',
+        }}>
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ChatView({ agent, messages, streamingText, streamingReasoning, sending, isReasoning, onSend }: Props) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -70,17 +106,22 @@ export default function ChatView({ agent, messages, streamingText, sending, isRe
                 }}>
                   {isUser ? 'U' : agent?.id === 'director' ? '🎯' : '🤖'}
                 </div>
-                <div style={{
-                  background: isUser ? 'var(--accent)' : 'var(--surface)',
-                  border: isUser ? 'none' : '1px solid var(--border)',
-                  borderRadius: 10,
-                  borderBottomRightRadius: isUser ? 4 : 10,
-                  borderBottomLeftRadius: isUser ? 10 : 4,
-                  padding: '10px 14px', maxWidth: '88%', fontSize: 14,
-                  lineHeight: 1.65, whiteSpace: 'pre-wrap',
-                  color: isUser ? '#fff' : 'var(--text)',
-                }}>
-                  {msg.content}
+                <div style={{ maxWidth: '88%' }}>
+                  {!isUser && msg.reasoning && (
+                    <ReasoningAccordion text={msg.reasoning} />
+                  )}
+                  <div style={{
+                    background: isUser ? 'var(--accent)' : 'var(--surface)',
+                    border: isUser ? 'none' : '1px solid var(--border)',
+                    borderRadius: 10,
+                    borderBottomRightRadius: isUser ? 4 : 10,
+                    borderBottomLeftRadius: isUser ? 10 : 4,
+                    padding: '10px 14px', fontSize: 14,
+                    lineHeight: 1.65, whiteSpace: 'pre-wrap',
+                    color: isUser ? '#fff' : 'var(--text)',
+                  }}>
+                    {msg.content}
+                  </div>
                 </div>
               </div>
             );
@@ -119,19 +160,24 @@ export default function ChatView({ agent, messages, streamingText, sending, isRe
               }}>
                 {agent?.id === 'director' ? '🎯' : '🤖'}
               </div>
-              <div style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 10, borderBottomLeftRadius: 4,
-                padding: '10px 14px', maxWidth: '88%', fontSize: 14,
-                lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--text)',
-              }}>
-                {streamingText}
-                <span style={{
-                  display: 'inline-block', width: 6, height: 14,
-                  background: 'var(--accent)', marginLeft: 2,
-                  borderRadius: 1, verticalAlign: 'text-bottom',
-                  animation: 'blink 0.8s step-end infinite',
-                }} />
+              <div style={{ maxWidth: '88%' }}>
+                {streamingReasoning && (
+                  <ReasoningAccordion text={streamingReasoning} />
+                )}
+                <div style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 10, borderBottomLeftRadius: 4,
+                  padding: '10px 14px', fontSize: 14,
+                  lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--text)',
+                }}>
+                  {streamingText}
+                  <span style={{
+                    display: 'inline-block', width: 6, height: 14,
+                    background: 'var(--accent)', marginLeft: 2,
+                    borderRadius: 1, verticalAlign: 'text-bottom',
+                    animation: 'blink 0.8s step-end infinite',
+                  }} />
+                </div>
               </div>
             </div>
           )}
