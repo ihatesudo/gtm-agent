@@ -14,6 +14,33 @@ export default {
     }
 
     // REST API endpoints
+    if (url.pathname.startsWith('/api/assets/')) {
+      const filename = decodeURIComponent(url.pathname.slice('/api/assets/'.length));
+      try {
+        const obj = await env.ASSETS_BUCKET.get(filename);
+        if (!obj) {
+          return new Response('Asset not found', { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } });
+        }
+        const body = await obj.text();
+        let contentType = 'text/plain; charset=utf-8';
+        if (filename.endsWith('.html')) contentType = 'text/html; charset=utf-8';
+        else if (filename.endsWith('.css')) contentType = 'text/css; charset=utf-8';
+        else if (filename.endsWith('.js')) contentType = 'application/javascript; charset=utf-8';
+        else if (filename.endsWith('.json')) contentType = 'application/json; charset=utf-8';
+        else if (filename.endsWith('.md')) contentType = 'text/markdown; charset=utf-8';
+        return new Response(body, {
+          headers: {
+            'Content-Type': contentType,
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+          },
+        });
+      } catch (err) {
+        return new Response('Error loading asset: ' + String(err), { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+
     if (url.pathname === '/api/roles') {
       return jsonResponse(listRoles());
     }
