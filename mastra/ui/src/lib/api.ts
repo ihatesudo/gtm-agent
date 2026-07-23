@@ -85,9 +85,11 @@ function parseSSE(
       buffer = lines.pop() || '';
 
       for (const line of lines) {
+        console.log('[SSE raw]', line);
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
           if (data === '[DONE]') {
+            console.log('[SSE] [DONE] received');
             if (!resolved) {
               resolved = true;
               callbacks?.onFinish(accumulated);
@@ -99,15 +101,15 @@ function parseSSE(
             const parsed = JSON.parse(data);
             const type = parsed.type || '';
             if (type === 'text-delta' || type === 'text') {
-              const delta = parsed.payload?.text || parsed.text || parsed.payload?.delta || '';
+              const delta = parsed.payload?.text || parsed.text || parsed.content || '';
               if (delta) {
-                currentText += delta;
                 accumulated += delta;
                 callbacks?.onText(accumulated);
               }
             } else if (type === 'reasoning-delta') {
               callbacks?.onReasoning?.();
             } else if (type === 'finish' || type === 'complete' || type === 'done' || type === 'text-end') {
+              console.log('[SSE] finish event, accumulated.length=%d', accumulated.length);
               if (!resolved) {
                 resolved = true;
                 callbacks?.onFinish(accumulated);
@@ -115,11 +117,12 @@ function parseSSE(
               }
               return;
             } else if (type === 'error') {
-              const errMsg = parsed.payload?.error?.message || parsed.payload?.error || parsed.error || parsed.message || 'Stream error';
+              const errMsg = parsed.error?.message || parsed.error || parsed.message || 'Stream error';
+              console.error('[SSE error]', errMsg);
               callbacks?.onError(errMsg);
             }
-          } catch {
-            // Skip non-JSON data events
+          } catch (e) {
+            console.warn('[SSE] non-JSON data (skipped):', data);
           }
         }
       }
@@ -128,18 +131,23 @@ function parseSSE(
     function pump(): Promise<void> {
       return reader!.read().then(({ done, value }) => {
         if (done) {
+          console.log('[SSE] stream done, buffer remaining:', JSON.stringify(buffer));
           processLines();
           if (!resolved) {
+            console.warn('[SSE] stream ended without finish event, accumulated.length=%d', accumulated.length);
             resolved = true;
             callbacks?.onFinish(accumulated);
             resolve({ threadId });
           }
           return;
         }
-        buffer += decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, { stream: true });
+        console.log('[SSE] chunk:', JSON.stringify(chunk));
+        buffer += chunk;
         processLines();
         return pump();
       }).catch((err) => {
+        console.error('[SSE] pump error:', err);
         if (!resolved) {
           resolved = true;
           callbacks?.onError(String(err));
