@@ -60,8 +60,11 @@ MASTRA = cd mastra
 mastra-dev: ## Dev mode — full Studio UI with hot reload (port 4111)
 	@$(MASTRA) && npm run dev
 
-mastra-test: ## Test mode — built Studio, runs like production (port 4111)
+mastra-test: ## Test mode — custom chat UI, production-like (port 4111)
 	@$(MASTRA) && npm run test
+
+mastra-ui-build: ## Build custom chat UI for test/prod mode
+	@$(MASTRA) && npm run ui:build
 
 mastra-prd: ## Build for Cloudflare Workers deployment
 	@$(MASTRA) && npm run prd

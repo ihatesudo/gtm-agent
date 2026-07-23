@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "mastra dev",
     "build": "mastra build",
-    "test": "mastra build --studio && node .mastra/output/index.mjs",
+    "test": "mastra build --studio && npm run ui:build && node .mastra/output/index.mjs",
+    "ui:build": "(cd ui && npm run build) && cp -r ui/dist/* .mastra/output/studio/",
     "prd": "mastra build",
-    "deploy": "mastra build && wrangler deploy"
+    "deploy": "mastra build && wrangler deploy",
+    "postbuild": "npm run ui:build"
   },
   "dependencies": {
     "@mastra/core": "latest",
