@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "mastra": {
+      "type": "local",
+      "command": ["npx", "-y", "@mastra/mcp-docs-server@latest"],
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "gtm-agent-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "generate": "tsx scripts/generate-data.ts",
+    "dev": "npm run generate && wrangler dev",
+    "deploy": "npm run generate && wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250201.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.113.0",
+    "yaml": "^2.6.0"
+  }
+}

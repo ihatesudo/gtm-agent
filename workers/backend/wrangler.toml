@@ -1,0 +1,19 @@
+name = "gtm-agent"
+main = "src/index.ts"
+compatibility_date = "2026-07-23"
+
+assets = { directory = "../frontend", not_found_handling = "single-page-application" }
+
+# LLM API keys — set these with `wrangler secret put`
+# OPENROUTER_API_KEY=sk-...
+# GEMINI_API_KEY=...
+[vars]
+# OPENROUTER_MODEL = "google/gemini-2.5-flash"      # $0.30/M tokens
+# OPENROUTER_MODEL = "google/gemma-4-31b-it:free"    # free, open model
+OPENROUTER_MODEL = "google/gemini-2.5-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
+
+# R2 bucket for saved assets (create with `wrangler r2 bucket create gtm-agent-assets`)
+[[r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "gtm-agent-assets"

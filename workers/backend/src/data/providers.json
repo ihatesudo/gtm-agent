@@ -1,0 +1,62 @@
+[
+  {
+    "name": "deepseek",
+    "title": "DeepSeek",
+    "description": "DeepSeek v4 — strong reasoning/thinking, OpenAI-compatible",
+    "baseUrl": "https://api.deepseek.com",
+    "model": "deepseek-v4-pro",
+    "apiKeyEnv": "DEEPSEEK_API_KEY",
+    "capabilities": {
+      "thinking": true,
+      "tools": true,
+      "vision": false
+    },
+    "currency": "CNY",
+    "website": "https://platform.deepseek.com"
+  },
+  {
+    "name": "gemini",
+    "title": "Gemini (Google)",
+    "description": "Gemini 2.5 Flash — built-in default (Vertex ADC or Developer API)",
+    "baseUrl": "",
+    "model": "",
+    "apiKeyEnv": "GEMINI_API_KEY",
+    "capabilities": {
+      "thinking": true,
+      "tools": true,
+      "vision": true
+    },
+    "currency": "USD",
+    "website": "https://ai.google.dev"
+  },
+  {
+    "name": "glm",
+    "title": "GLM (Zhipu)",
+    "description": "GLM-5.2 — strong thinking/reasoning + vision, OpenAI-compatible",
+    "baseUrl": "https://open.bigmodel.cn/api/paas/v4/",
+    "model": "glm-5.2",
+    "apiKeyEnv": "GLM_API_KEY",
+    "capabilities": {
+      "thinking": true,
+      "tools": true,
+      "vision": true
+    },
+    "currency": "CNY",
+    "website": "https://bigmodel.cn"
+  },
+  {
+    "name": "openrouter",
+    "title": "OpenRouter",
+    "description": "OpenRouter — access 200+ models via OpenAI-compatible API (GPT-4, Claude, Llama, etc.)",
+    "baseUrl": "https://openrouter.ai/api/v1",
+    "model": "openrouter/auto",
+    "apiKeyEnv": "OPENROUTER_API_KEY",
+    "capabilities": {
+      "thinking": false,
+      "tools": true,
+      "vision": false
+    },
+    "currency": "USD",
+    "website": "https://openrouter.ai"
+  }
+]

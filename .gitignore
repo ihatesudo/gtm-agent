@@ -18,3 +18,8 @@ env.sh
 .env
 .env.production
 
+# Cloudflare Workers
+workers/backend/.dev.vars
+workers/backend/node_modules/
+workers/backend/dist/
+

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTM Agent</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <h1>GTM Agent</h1>
+      <p class="subtitle">Marketing Team in One AI</p>
+    </div>
+    <div class="sidebar-section">
+      <label for="role-select">Role</label>
+      <select id="role-select"><option value="">Director (default)</option></select>
+    </div>
+    <div class="sidebar-section">
+      <label for="skill-select">Skill</label>
+      <select id="skill-select"><option value="">None (general)</option></select>
+    </div>
+    <div class="sidebar-section">
+      <label for="lang-select">Language</label>
+      <select id="lang-select">
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+    <div class="sidebar-footer">
+      <div id="connection-status" class="status-disconnected">Disconnected</div>
+      <div id="ws-url">ws://localhost:8787/ws</div>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="messages"></div>
+    <div id="input-area">
+      <textarea id="input" rows="2" placeholder="What should we work on today?"></textarea>
+      <button id="send-btn" disabled>Send</button>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
