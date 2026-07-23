@@ -1,24 +1,28 @@
 {
   "name": "gtm-agent-mastra",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "description": "GTM Agent — Mastra campaign orchestrator",
   "type": "module",
   "scripts": {
     "dev": "mastra dev",
     "build": "mastra build",
+    "test": "mastra build --studio && node .mastra/output/index.mjs",
+    "prd": "mastra build",
     "deploy": "mastra build && wrangler deploy"
   },
   "dependencies": {
     "@mastra/core": "latest",
-    "@mastra/memory": "latest",
-    "@mastra/libsql": "latest",
     "@mastra/deployer-cloudflare": "latest",
+    "@mastra/libsql": "latest",
+    "@mastra/memory": "latest",
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "mastra": "latest",
-    "typescript": "^5.7.0",
     "@types/node": "^22.0.0",
+    "mastra": "latest",
+    "tsx": "^4.23.1",
+    "typescript": "^5.7.0",
     "wrangler": "^4.0.0"
   }
 }

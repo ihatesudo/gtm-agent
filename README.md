@@ -274,6 +274,9 @@ Prefer a structured campaign engine with auto-delegation and memory? Two command
 ```bash
 cd mastra
 cp .env.example .env   # set OPENROUTER_API_KEY
+npm run dev            # dev mode  → full Studio UI
+npm run test           # test mode → built Studio (no dev chrome)
+npm run prd            # prd mode  → build for Cloudflare deploy
 node run.mjs           # one-shot campaign generation
 ```
 
@@ -486,16 +489,28 @@ mastra/src/mastra/agents/specialists.ts       5 specialist sub-agents
 mastra/src/mastra/workflows/campaign-workflow.ts  3-step campaign pipeline
 mastra/src/mastra/memory/project-memory.ts     Cross-session project memory (product, ICP, voice, campaigns)
 mastra/src/mastra/tools/gtm-tools.ts          Mastra tools wrapping the Python tools
+mastra/package.json                           Scripts: dev / test / prd
 ```
+
+#### Three modes — dev · test · prd
 
 ```bash
 cd mastra
 cp .env.example .env   # set OPENROUTER_API_KEY
-npm run dev            # Mastra Studio at http://localhost:4111
-node run.mjs           # one-shot campaign generation
+
+make mastra-dev        # Dev:  full Studio UI + hot reload      → :4111
+make mastra-test       # Test: built Studio, production-like     → :4111
+make mastra-prd        # Prd:  build for Cloudflare deployment
+
+node run.mjs           # one-shot campaign generation via CLI
+# or: make mastra-run
 ```
 
-When you run the Mastra engine, it calls the same Python tool CLIs under the hood via a thin bridge layer. New development happens in Mastra; the Python CLI is maintained for terminal users who prefer a REPL.
+| Mode | Command | What you get |
+|------|---------|-------------|
+| **dev** | `make mastra-dev` (or `npm run dev`) | Full Mastra Studio — agent management, workflow monitoring, tools, memory, campaign builder. Hot reload. |
+| **test** | `make mastra-test` (or `npm run test`) | Same Studio UI but production-built — no dev overlays, no hot-reload chrome. Cleaner, faster. |
+| **prd** | `make mastra-prd` (or `npm run prd`) | Build only — produces `.mastra/output/` for Cloudflare Workers deploy. |
 
 ### Can they merge?
 
@@ -503,8 +518,15 @@ Not in the same process — one is Python, the other is TypeScript. But the **Ma
 
 For now:
 - **Want a quick terminal conversation?** → `make run`
-- **Want campaign plans, multi-turn chats, and a visual Studio?** → `cd mastra && npm run dev`
-- **Want both?** → Keep them in the same repo. They share roles, skills, and tools. No duplication.
+- **Want campaign plans, multi-turn chats, and a visual Studio?** → use the mastra-* targets
+- **Want both runtimes?** → Keep them in the same repo. They share roles, skills, and tools. No duplication.
+
+| Goal | Command |
+|------|---------|
+| Full Studio dev | `make mastra-dev` |
+| Test (built, clean Studio) | `make mastra-test` |
+| Build for deploy | `make mastra-prd` |
+| One-shot campaign | `make mastra-run` |
 
 ## Housekeeping
 

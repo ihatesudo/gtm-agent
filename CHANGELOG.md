@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.1 (2026-07-24)
+
+### Three-mode Mastra targets (dev · test · prd)
+
+- **Three modes** via `Makefile`: `make mastra-dev` (full Studio), `make mastra-test` (built Studio, no dev chrome), `make mastra-prd` (build for Cloudflare)
+- Removed custom HTML UI — directly uses Mastra Studio core UI in all modes
+- Removed broken `start.mjs` (had ESM/Proxy bugs)
+- Added `tsx` dep for `make mastra-run`
+- **Chinese README** (`README.zh-CN.md`) updated with full Mastra docs translation
+
+---
+
 ## v0.2.0 (2026-07-24)
 
 ### Mastra campaign orchestrator (`mastra/`)
