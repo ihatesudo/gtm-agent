@@ -102,9 +102,7 @@
 - **目标**：在桌面沙盒区提供可视化的节点图（Node Graph），直观展示 Agent 编排的工作流步骤。
 - **实现方案**：引入 `reactflow`，根据 SSE 传回的 `tool_call` 与 `workflow` 事件动态连线和高亮节点。
 
-### 2. 语音输入与波形图 (Voice Input & Audio Waveform) ── 📅 待启动 (Milestone B)
-- **目标**：支持点击麦克风进行实时语音输入，自带 pulsing 波形动画。
-- **实现方案**：基于 HTML5 `MediaRecorder` API 与 Web Audio API 渲染 `.audio-wave` 波形，通过 Gemini API 进行语音识别填充输入框。
+
 
 ### 3. Headless 浏览器实时镜像 (Live Browser / Crawler Mirror) ── 📅 待启动 (Milestone C)
 - **目标**：在 macOS 模拟视口中，实时展示 headless 浏览器爬取/执行任务时的真实截图，而非静态 mockup。
@@ -131,3 +129,10 @@
 - [云部署调研报告 (cloud-deployment-research.md)](file:///Users/miczhuang/Code/AI/gtm-agent/docs/cloud-deployment-research.md)
 - [生产环境部署 Gap 分析 (prd-gap-analysis.md)](file:///Users/miczhuang/Code/AI/gtm-agent/docs/prd-gap-analysis.md)
 
+---
+
+## need marketing / reddit user feedback research. No need to do it in mvp
+
+### 语音输入与波形图 (Voice Input & Audio Waveform)
+- **目标**：支持点击麦克风进行实时语音输入，自带 pulsing 波形动画。
+- **实现方案**：基于 HTML5 `MediaRecorder` API 与 Web Audio API 渲染 `.audio-wave` 波形，通过 Gemini API 进行语音识别填充输入框。
