@@ -89,6 +89,13 @@
 
 ## 3. 下一步产品规划 backlog (Roadmap & Backlog)
 
+> [!IMPORTANT]
+> **V8 Isolate 运行环境限制与 Playwright 执行决议**：
+> 由于 Cloudflare Workers 运行在 V8 Isolate 隔离空间中，无法原生支持 Playwright 运行（即缺乏浏览器运行时、视频录制与 ffmpeg 等外部进程执行环境）。
+> 针对**自动化爬虫/浏览器镜像 (Backlog Point 3)** 与 **iMessage 视频广告生成 (Ad-Creative Playbook 引用)** 这两大依赖 Playwright 的特性，我们需要重新评估技术方案：
+> 1. **第三方托管服务**：使用第三方 API 解决环境依赖。网页爬虫（Point 1）可引入 **Browserbase** 或 **Stagehand** 等 headless 浏览器即服务；视频广告录制（Point 3）可使用 **Remotion** 云端渲染。
+> 2. **更换 Cloudflare 部署底座**：若要保持完全的自主掌控性并避免外部 API 账单，需要舍弃 Cloudflare Workers，寻找支持标准 Docker 容器且支持 scale-to-zero 的替代部署方案（例如部署至 **Google Cloud Run** 或 **AWS Fargate** 上，以便能够原生打包和运行完整的 Playwright 与 ffmpeg 依赖）。
+
 为打造更极致的 Campaign Orchestrator，我们将按照以下 backlog 逐步实现高级特性：
 
 ### 1. 交互式工作流画布 (Interactive Workflow Canvas) ── 📅 待启动 (Milestone A)
