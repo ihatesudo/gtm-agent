@@ -121,3 +121,11 @@
 - **开发效率提升**：统一为 TypeScript Mastra 架构，消除了双端协议同步摩擦，且利用 Mastra 原生 workflow 减少了约 40% 的胶水代码。
 - **上下文基础能力提升**：多轮对话与 Project Memory 解决了 stateless 架构中“问答断片”的缺陷，对话有效性提升 90% 以上。
 - **体验现代化**：全新 React UI 配合思维链（Reasoning Indicator）可视化展示，为用户提供了极其透明的智能体协同感知。
+
+---
+
+## 5. 云部署与数据库调研 (Cloud Deployment & Database Research)
+
+关于部署至 Cloudflare Workers 的资费对比、数据库选择（Turso vs D1）和部署细节，请参考以下报告：
+- [云部署调研报告 (cloud_deployment_research.md)](file:///Users/miczhuang/.gemini/antigravity-cli/brain/436ff0d0-ca29-407d-9737-8c43b3fb3b77/cloud_deployment_research.md)
+- [生产环境部署 Gap 分析 (prd_gap_analysis.md)](file:///Users/miczhuang/.gemini/antigravity-cli/brain/436ff0d0-ca29-407d-9737-8c43b3fb3b77/prd_gap_analysis.md)
