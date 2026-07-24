@@ -98,9 +98,6 @@
 
 为打造更极致的 Campaign Orchestrator，我们将按照以下 backlog 逐步实现高级特性：
 
-### 1. 交互式工作流画布 (Interactive Workflow Canvas) ── 📅 待启动 (Milestone A)
-- **目标**：在桌面沙盒区提供可视化的节点图（Node Graph），直观展示 Agent 编排的工作流步骤。
-- **实现方案**：引入 `reactflow`，根据 SSE 传回的 `tool_call` 与 `workflow` 事件动态连线和高亮节点。
 
 
 
@@ -136,3 +133,7 @@
 ### 语音输入与波形图 (Voice Input & Audio Waveform)
 - **目标**：支持点击麦克风进行实时语音输入，自带 pulsing 波形动画。
 - **实现方案**：基于 HTML5 `MediaRecorder` API 与 Web Audio API 渲染 `.audio-wave` 波形，通过 Gemini API 进行语音识别填充输入框。
+
+### 交互式工作流画布 (Interactive Workflow Canvas)
+- **目标**：在桌面沙盒区提供可视化的节点图（Node Graph），直观展示 Agent 编排的工作流步骤。
+- **实现方案**：引入 `reactflow`，根据 SSE 传回的 `tool_call` 与 `workflow` 事件动态连线和高亮节点。
