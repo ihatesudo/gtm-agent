@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "mastra dev",
+    "prebuild": "node scripts/bundle-skills.mjs",
     "build": "mastra build",
     "test": "mastra build --studio && npm run ui:build && node .mastra/output/index.mjs",
     "ui:build": "mkdir -p .mastra/output/studio && (cd ui && npm run build) && cp -r ui/dist/* .mastra/output/studio/",
@@ -16,6 +17,7 @@
     "test:smoke:live": "MASTRA_URL=http://localhost:4111 node ui/scripts/smoke-test.mjs"
   },
   "dependencies": {
+    "@libsql/client": "latest",
     "@mastra/core": "latest",
     "@mastra/deployer-cloudflare": "latest",
     "@mastra/libsql": "latest",

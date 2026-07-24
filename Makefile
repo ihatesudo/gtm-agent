@@ -27,6 +27,7 @@ help: ## Show this help
 	@echo "  mastra-test    Test mode — custom chat UI, production-like → :4111"
 	@echo "  mastra-ui-build  Build custom chat UI for test/prod mode"
 	@echo "  mastra-prd     Build for Cloudflare Workers deployment"
+	@echo "  mastra-secrets Upload secrets to Cloudflare Workers (GEMINI_API_KEY, TURSO_*)"
 	@echo "  mastra-run     One-shot campaign generation via CLI"
 	@echo ""
 	@echo "Cloudflare Workers (deployment):"
@@ -79,6 +80,13 @@ mastra-smoke: ## Run SSE smoke tests (no server needed)
 
 mastra-smoke-live: ## Run live smoke tests (server must be running on :4111)
 	@$(MASTRA) && npm run test:smoke:live
+
+mastra-secrets: ## Upload Cloudflare Workers secrets for the Mastra deployment
+	@echo "Uploading secrets for gtm-agent-mastra worker..."
+	@cd mastra && npx wrangler secret put GEMINI_API_KEY
+	@cd mastra && npx wrangler secret put TURSO_DATABASE_URL
+	@cd mastra && npx wrangler secret put TURSO_AUTH_TOKEN
+	@echo "Done. Run 'make mastra-prd' then 'cd mastra && npx wrangler deploy'."
 
 # ─── Web/Workers targets ──────────────────────────────────────────────
 

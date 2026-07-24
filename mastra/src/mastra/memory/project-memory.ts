@@ -1,3 +1,4 @@
+import { createClient } from '@libsql/client';
 import { z } from 'zod';
 
 export const ProjectSchema = z.object({
@@ -24,75 +25,111 @@ export const ProjectSchema = z.object({
 
 export type ProjectMemory = z.infer<typeof ProjectSchema>;
 
-const projectStore = new Map<string, ProjectMemory>();
-
-export function getProject(projectId: string): ProjectMemory | null {
-  return projectStore.get(projectId) ?? null;
-}
-
-export function listProjects(): ProjectMemory[] {
-  return Array.from(projectStore.values());
-}
-
-export function saveProject(project: ProjectMemory): void {
-  const existing = projectStore.get(project.projectId);
-  projectStore.set(project.projectId, {
-    ...project,
-    createdAt: existing?.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+function getDb() {
+  return createClient({
+    url: process.env.TURSO_DATABASE_URL || 'file:mastra.db',
+    authToken: process.env.TURSO_AUTH_TOKEN,
   });
 }
 
-export function deleteProject(projectId: string): void {
-  projectStore.delete(projectId);
+async function ensureTable() {
+  const db = getDb();
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS projects (
+      project_id TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
 }
 
-export function updateProjectContext(
+export async function getProject(projectId: string): Promise<ProjectMemory | null> {
+  await ensureTable();
+  const db = getDb();
+  const result = await db.execute({
+    sql: 'SELECT data FROM projects WHERE project_id = ?',
+    args: [projectId],
+  });
+  if (result.rows.length === 0) return null;
+  return JSON.parse(result.rows[0].data as string) as ProjectMemory;
+}
+
+export async function listProjects(): Promise<ProjectMemory[]> {
+  await ensureTable();
+  const db = getDb();
+  const result = await db.execute('SELECT data FROM projects ORDER BY updated_at DESC');
+  return result.rows.map(r => JSON.parse(r.data as string) as ProjectMemory);
+}
+
+export async function saveProject(project: ProjectMemory): Promise<void> {
+  await ensureTable();
+  const db = getDb();
+  const now = new Date().toISOString();
+  const existing = await getProject(project.projectId);
+  const toSave: ProjectMemory = {
+    ...project,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+  await db.execute({
+    sql: `INSERT INTO projects (project_id, data, created_at, updated_at)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(project_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+    args: [toSave.projectId, JSON.stringify(toSave), toSave.createdAt, toSave.updatedAt],
+  });
+}
+
+export async function deleteProject(projectId: string): Promise<void> {
+  await ensureTable();
+  const db = getDb();
+  await db.execute({ sql: 'DELETE FROM projects WHERE project_id = ?', args: [projectId] });
+}
+
+export async function updateProjectContext(
   projectId: string,
   updates: Partial<ProjectMemory>,
-): ProjectMemory | null {
-  const existing = projectStore.get(projectId);
+): Promise<ProjectMemory | null> {
+  const existing = await getProject(projectId);
   if (!existing) return null;
   const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
-  projectStore.set(projectId, updated);
+  await saveProject(updated);
   return updated;
 }
 
-export function addCampaignToProject(
+export async function addCampaignToProject(
   projectId: string,
   campaign: { name: string; channels: string[]; results: string },
-): ProjectMemory | null {
-  const project = projectStore.get(projectId);
+): Promise<ProjectMemory | null> {
+  const project = await getProject(projectId);
   if (!project) return null;
-  project.pastCampaigns.push({
-    ...campaign,
-    date: new Date().toISOString(),
-  });
-  project.updatedAt = new Date().toISOString();
-  return project;
+  const updated: ProjectMemory = {
+    ...project,
+    pastCampaigns: [...project.pastCampaigns, { ...campaign, date: new Date().toISOString() }],
+    updatedAt: new Date().toISOString(),
+  };
+  await saveProject(updated);
+  return updated;
 }
 
-export function addDecisionToProject(
+export async function addDecisionToProject(
   projectId: string,
   decision: { decision: string; rationale: string },
-): ProjectMemory | null {
-  const project = projectStore.get(projectId);
+): Promise<ProjectMemory | null> {
+  const project = await getProject(projectId);
   if (!project) return null;
-  project.keyDecisions.push({
-    ...decision,
-    date: new Date().toISOString(),
-  });
-  project.updatedAt = new Date().toISOString();
-  return project;
+  const updated: ProjectMemory = {
+    ...project,
+    keyDecisions: [...project.keyDecisions, { ...decision, date: new Date().toISOString() }],
+    updatedAt: new Date().toISOString(),
+  };
+  await saveProject(updated);
+  return updated;
 }
 
-export function findProjectByProduct(productName: string): ProjectMemory | null {
-  for (const project of projectStore.values()) {
-    if (project.productName.toLowerCase() === productName.toLowerCase()) {
-      return project;
-    }
-  }
-  return null;
+export async function findProjectByProduct(productName: string): Promise<ProjectMemory | null> {
+  const all = await listProjects();
+  return all.find(p => p.productName.toLowerCase() === productName.toLowerCase()) ?? null;
 }
 
 export function formatProjectContext(project: ProjectMemory): string {

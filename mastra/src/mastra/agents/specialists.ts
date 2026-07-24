@@ -20,7 +20,7 @@ Check live auction data, competitor ad copy, and latest Google Ads features befo
 
 ## Output format
 Always provide: (1) specific, actionable recommendations (2) expected impact metrics (3) implementation priority.`,
-  model: 'openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+  model: 'google/gemini-2.5-flash-lite-preview-06-17',
   tools: ALL_GTM_TOOLS,
 });
 
@@ -43,7 +43,7 @@ Research current ad creative trends, platform updates, and audience insights.
 
 ## Output format
 Always provide platform-specific recommendations with audience size estimates and expected CPAs.`,
-  model: 'openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+  model: 'google/gemini-2.5-flash-lite-preview-06-17',
   tools: ALL_GTM_TOOLS,
 });
 
@@ -67,7 +67,7 @@ Research SERP features, competitor rankings, and current SEO trends before makin
 
 ## Output format
 Structure recommendations as: (1) priority/impact matrix (2) implementation steps (3) KPIs to track.`,
-  model: 'openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+  model: 'google/gemini-2.5-flash-lite-preview-06-17',
   tools: ALL_GTM_TOOLS,
 });
 
@@ -90,7 +90,7 @@ Research target accounts, industry trends, and competitor positioning.
 
 ## Output format
 Structure as: (1) account/audience selection (2) channel-specific strategy (3) sequence/timeline (4) success metrics.`,
-  model: 'openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+  model: 'google/gemini-2.5-flash-lite-preview-06-17',
   tools: ALL_GTM_TOOLS,
 });
 
@@ -114,7 +114,7 @@ Research email marketing best practices, ESP features, and retention benchmarks.
 
 ## Output format
 Structure as: (1) segmentation approach (2) flow/sequence design (3) trigger logic (4) metrics and targets.`,
-  model: 'openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+  model: 'google/gemini-2.5-flash-lite-preview-06-17',
   tools: ALL_GTM_TOOLS,
 });
 

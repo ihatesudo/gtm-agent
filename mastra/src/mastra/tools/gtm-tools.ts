@@ -2,8 +2,6 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import {
   getProject,
   saveProject,
@@ -14,8 +12,18 @@ import {
   ProjectMemory,
 } from '../memory/project-memory.js';
 
-const execFileAsync = promisify(execFile);
-
+// Skills registry — bundled at build time (see scripts/bundle-skills.mjs)
+// Falls back to filesystem for local dev if registry not yet built.
+let _skillsRegistry: Record<string, { description: string; content: string; refs: Record<string, string> }> | null = null;
+async function getSkillsRegistry() {
+  if (_skillsRegistry) return _skillsRegistry;
+  try {
+    const registryPath = new URL('./skills-registry.json', import.meta.url);
+    const raw = await import(registryPath.pathname, { assert: { type: 'json' } }).then((m: any) => m.default).catch(() => null);
+    if (raw) { _skillsRegistry = raw; return _skillsRegistry!; }
+  } catch {}
+  return null;
+}
 
 const OUTPUT_DIR = path.resolve('output');
 
@@ -135,6 +143,12 @@ export const listSkillsTool = createTool({
     output: z.string(),
   }),
   execute: async () => {
+    const registry = await getSkillsRegistry();
+    if (registry) {
+      const lines = Object.entries(registry).map(([name, s]) => `${name} — ${s.description}`);
+      return { output: lines.length ? lines.join('\n') : '(no skills installed)' };
+    }
+    // Fallback: filesystem (local dev)
     const skillsDir = path.resolve('skills');
     try {
       const entries = await fs.readdir(skillsDir, { withFileTypes: true });
@@ -170,6 +184,15 @@ export const readSkillReferenceTool = createTool({
     output: z.string(),
   }),
   execute: async ({ skill_name, filename }) => {
+    const registry = await getSkillsRegistry();
+    if (registry) {
+      const skill = registry[skill_name];
+      if (!skill) return { output: `[Skill not found: ${skill_name}]` };
+      const ref = skill.refs[path.basename(filename)];
+      if (!ref) return { output: `[Reference not found: ${skill_name}/references/${filename}]` };
+      return { output: ref };
+    }
+    // Fallback: filesystem
     const refPath = path.resolve('skills', skill_name, 'references', path.basename(filename));
     try {
       const content = await fs.readFile(refPath, 'utf-8');
@@ -200,51 +223,6 @@ export const readToolGuideTool = createTool({
   },
 });
 
-async function getCliPath(cliName: string): Promise<string> {
-  const name = path.basename(cliName).replace(/\.js$/, '');
-  const possiblePaths = [
-    path.resolve(process.cwd(), 'tools', 'clis', `${name}.js`),
-    path.resolve(process.cwd(), '..', 'tools', 'clis', `${name}.js`),
-  ];
-  for (const p of possiblePaths) {
-    try {
-      await fs.access(p);
-      return p;
-    } catch {}
-  }
-  throw new Error(`CLI script for '${cliName}' not found`);
-}
-
-export const executeMarketingCliTool = createTool({
-  id: 'execute_marketing_cli',
-  description: 'Execute a marketing platform CLI tool integration (e.g. resend, ahrefs, ga4, etc.) to fetch real metrics or perform real operations. All CLIs support --dry-run option to preview the request without invoking the actual API.',
-  inputSchema: z.object({
-    cli: z.string().describe('The name of the CLI integration without suffix, e.g. "resend", "ahrefs", "ga4", "klaviyo".'),
-    command: z.string().describe('The subcommand to run, e.g. "send" or "emails list".'),
-    args: z.array(z.string()).optional().describe('Arguments as an array of strings, e.g. ["--from", "you@example.com", "--to", "them@example.com", "--subject", "Hello", "--html", "<p>Hi</p>"].'),
-  }),
-  outputSchema: z.object({
-    output: z.string(),
-  }),
-  execute: async ({ cli, command, args = [] }) => {
-    try {
-      const cliPath = await getCliPath(cli);
-      const subcommands = command.split(/\s+/).filter(Boolean);
-      const allArgs = [cliPath, ...subcommands, ...args];
-      
-      const { stdout, stderr } = await execFileAsync('node', allArgs, {
-        env: { ...process.env }
-      });
-      
-      return { output: stdout || stderr };
-    } catch (err: any) {
-      return { 
-        output: `Execution failed: ${err.message}\nStdout: ${err.stdout || ''}\nStderr: ${err.stderr || ''}` 
-      };
-    }
-  }
-});
-
 export const getProjectContextTool = createTool({
   id: 'get_project_context',
   description: 'Retrieve the marketing project context (product details, target market, ICP description, brand voice, past campaigns, and key decisions) for a given project ID.',
@@ -255,7 +233,7 @@ export const getProjectContextTool = createTool({
     output: z.string(),
   }),
   execute: async ({ projectId }) => {
-    const project = getProject(projectId);
+    const project = await getProject(projectId);
     if (!project) {
       return { output: `Project with ID "${projectId}" not found.` };
     }
@@ -278,7 +256,7 @@ export const updateProjectContextTool = createTool({
     output: z.string(),
   }),
   execute: async ({ projectId, productName, icpDescription, brandVoice, targetMarket, goals }) => {
-    const existing = getProject(projectId);
+    const existing = await getProject(projectId);
     const updatedProject: ProjectMemory = {
       projectId,
       productName: productName ?? existing?.productName ?? '',
@@ -291,7 +269,7 @@ export const updateProjectContextTool = createTool({
       createdAt: existing?.createdAt ?? new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    saveProject(updatedProject);
+    await saveProject(updatedProject);
     return { output: `Project context updated successfully:\n${formatProjectContext(updatedProject)}` };
   },
 });
@@ -309,7 +287,7 @@ export const recordProjectCampaignTool = createTool({
     output: z.string(),
   }),
   execute: async ({ projectId, name, channels, results }) => {
-    const updated = addCampaignToProject(projectId, { name, channels, results });
+    const updated = await addCampaignToProject(projectId, { name, channels, results });
     if (!updated) {
       return { output: `Failed to record campaign. Project with ID "${projectId}" not found.` };
     }
@@ -329,7 +307,7 @@ export const recordProjectDecisionTool = createTool({
     output: z.string(),
   }),
   execute: async ({ projectId, decision, rationale }) => {
-    const updated = addDecisionToProject(projectId, { decision, rationale });
+    const updated = await addDecisionToProject(projectId, { decision, rationale });
     if (!updated) {
       return { output: `Failed to record decision. Project with ID "${projectId}" not found.` };
     }
@@ -345,10 +323,8 @@ export const ALL_GTM_TOOLS = {
   listSkillsTool,
   readSkillReferenceTool,
   readToolGuideTool,
-  executeMarketingCliTool,
   getProjectContextTool,
   updateProjectContextTool,
   recordProjectCampaignTool,
   recordProjectDecisionTool,
 };
-
