@@ -511,6 +511,18 @@ node run.mjs           # one-shot campaign generation via CLI
 | **test** | `make test` (or `npm run test`) | Same Studio UI but production-built — no dev overlays, no hot-reload chrome. Cleaner, faster. |
 | **prd** | `make prd` (or `npm run prd`) | Build only — produces `.mastra/output/` for Cloudflare Workers deploy. |
 
+### Model choice (UI dropdown)
+
+The Mastra UI's model picker routes to **three independent providers** — pick whichever matches the keys you've set in `.env`. They are deliberately separate, not a shared pool:
+
+| Option | Provider | When / why |
+|--------|----------|-----------|
+| **Gemini 2.5 Flash / Pro** | Vertex AI (`/edge`, service account) | Consumes your **GCP credits** — the path for burning Gemini models. |
+| **OpenRouter (Auto)** | OpenRouter | Free-tier models; one key (`OPENROUTER_API_KEY`) is enough. |
+| **GLM-5.2** | Zhipu Coding Plan (OpenAI-compatible) | Uses your own Zhipu key (`ZHIPU_API_KEY`). Routed through the OpenAI-compatible endpoint — the best-supported SDK shape for GLM. |
+
+The choice is sent per-request (`modelChoice`) and threaded through `requestContext`, so every agent in the chain (Director + specialists) honors it. Gemini burns GCP quota, OpenRouter uses free models, GLM uses your Zhipu subscription — no cross-subsidy.
+
 ### Can they merge?
 
 Not in the same process — one is Python, the other is TypeScript. But the **Mastra engine is where new features land** (campaigns, delegation, memory). The long-term vision is for the CLI to delegate to the Mastra HTTP API, so you get one brain with two interfaces.
