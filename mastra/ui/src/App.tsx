@@ -59,7 +59,7 @@ export default function App() {
   }, []);
 
   const handleSend = useCallback(
-    async (content: string) => {
+    async (content: string, options?: { model?: string, thinkingMode?: string }) => {
       if (!selectedAgentId || sending) return;
       setSending(true);
       setIsReasoning(false);
@@ -69,6 +69,7 @@ export default function App() {
 
       try {
         const result = await sendMessageStream(selectedAgentId, content, threadId || undefined, {
+          ...options,
           onText: (text) => { setIsReasoning(false); setStreamingText(text); },
           onReasoning: (reasoning) => { setIsReasoning(true); setStreamingReasoning(reasoning); },
           onFinish: (fullText, reasoning) => {

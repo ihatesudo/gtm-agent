@@ -1,8 +1,9 @@
 import { useState, useRef, type KeyboardEvent } from 'react';
 import Icon from './Icon';
+import { ProviderWarning } from './ProviderWarning';
 
 interface WelcomeViewProps {
-  onSend: (content: string) => void;
+  onSend: (content: string, options?: { model?: string, thinkingMode?: string }) => void;
   sending: boolean;
 }
 
@@ -16,12 +17,14 @@ const QUICK_PILLS = [
 
 export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
   const [input, setInput] = useState('');
+  const [model, setModel] = useState('gemini-2.5-pro');
+  const [thinkingMode, setThinkingMode] = useState('medium');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed || sending) return;
-    onSend(trimmed);
+    onSend(trimmed, { model, thinkingMode });
     setInput('');
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -60,19 +63,58 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
             disabled={sending}
             style={styles.textarea}
           />
+          <div style={{ padding: '0 12px' }}>
+            <ProviderWarning model={model} />
+          </div>
           <div style={styles.toolbar}>
-            <span style={styles.hint}>Enter to send · Shift + Enter for a new line</span>
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || sending}
-              style={{
-                ...styles.sendBtn,
-                opacity: !input.trim() || sending ? 0.5 : 1,
-              }}
-              aria-label="Send message"
-            >
-              <Icon name="arrow-up" size={18} />
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <select 
+                value={model} 
+                onChange={(e) => setModel(e.target.value)}
+                disabled={sending}
+                style={{
+                  background: 'var(--surface-hover)', border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)', fontSize: 12, padding: '6px 10px',
+                  borderRadius: 6, outline: 'none', cursor: 'pointer', fontFamily: 'inherit'
+                }}
+              >
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-2.0-flash-thinking">Gemini 2.0 Flash Thinking</option>
+                <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                <option value="gpt-4o">GPT-4o</option>
+              </select>
+
+              <select 
+                value={thinkingMode} 
+                onChange={(e) => setThinkingMode(e.target.value)}
+                disabled={sending}
+                style={{
+                  background: 'var(--surface-hover)', border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)', fontSize: 12, padding: '6px 10px',
+                  borderRadius: 6, outline: 'none', cursor: 'pointer', fontFamily: 'inherit'
+                }}
+              >
+                <option value="none">No Thinking</option>
+                <option value="easy">Thinking: Easy</option>
+                <option value="medium">Thinking: Medium</option>
+                <option value="hard">Thinking: Hard</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={styles.hint}>Enter to send</span>
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || sending}
+                style={{
+                  ...styles.sendBtn,
+                  opacity: !input.trim() || sending ? 0.5 : 1,
+                }}
+                aria-label="Send message"
+              >
+                <Icon name="arrow-up" size={18} />
+              </button>
+            </div>
           </div>
         </div>
 

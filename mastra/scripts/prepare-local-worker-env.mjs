@@ -5,7 +5,6 @@ import { resolve } from 'node:path';
 
 const rootEnv = resolve(import.meta.dirname, '..', '..', '.env');
 const outputDir = resolve(import.meta.dirname, '..', '.mastra', 'output');
-const required = ['GEMINI_API_KEY', 'TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'];
 const source = await readFile(rootEnv, 'utf8');
 const values = new Map();
 
@@ -19,16 +18,28 @@ for (const line of source.split(/\r?\n/)) {
   values.set(match[1], value);
 }
 
+const required = ['TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'];
 const missing = required.filter((key) => !values.get(key));
 if (missing.length) {
   console.error(`Missing required root .env values: ${missing.join(', ')}`);
   process.exit(1);
 }
 
+// Auto-fill GOOGLE_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY from GEMINI_API_KEY if missing
+const geminiKey = values.get('GEMINI_API_KEY') || values.get('GOOGLE_API_KEY');
+if (geminiKey) {
+  if (!values.has('GOOGLE_API_KEY')) values.set('GOOGLE_API_KEY', geminiKey);
+  if (!values.has('GOOGLE_GENERATIVE_AI_API_KEY')) values.set('GOOGLE_GENERATIVE_AI_API_KEY', geminiKey);
+}
+
 await mkdir(outputDir, { recursive: true });
+const devVarsContent = Array.from(values.entries())
+  .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+  .join('\n') + '\n';
+
 await writeFile(
   resolve(outputDir, '.dev.vars'),
-  required.map((key) => `${key}=${JSON.stringify(values.get(key))}`).join('\n') + '\n',
+  devVarsContent,
   { mode: 0o600 },
 );
 console.log('Local Worker secrets prepared.');

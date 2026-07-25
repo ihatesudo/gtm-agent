@@ -23,3 +23,6 @@ workers/backend/.dev.vars
 workers/backend/node_modules/
 workers/backend/dist/
 
+# log
+agent_logs/
+

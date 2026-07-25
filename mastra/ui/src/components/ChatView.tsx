@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import type { Agent, Message } from '../types';
+import { ProviderWarning } from './ProviderWarning';
 
 interface Props {
   agent?: Agent;
@@ -8,7 +9,7 @@ interface Props {
   streamingReasoning?: string;
   sending: boolean;
   isReasoning: boolean;
-  onSend: (content: string) => void;
+  onSend: (content: string, options?: { model?: string, thinkingMode?: string }) => void;
 }
 
 function ReasoningAccordion({ text }: { text: string }) {
@@ -48,16 +49,19 @@ function ReasoningAccordion({ text }: { text: string }) {
 
 export default function ChatView({ agent, messages, streamingText, streamingReasoning, sending, isReasoning, onSend }: Props) {
   const [input, setInput] = useState('');
+  const [model, setModel] = useState('gemini-2.5-pro');
+  const [thinkingMode, setThinkingMode] = useState('medium');
+  
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, streamingText]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, streamingText, sending]);
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   const handleSend = () => {
     const text = input.trim();
     if (!text || sending || !agent) return;
-    onSend(text);
+    onSend(text, { model, thinkingMode });
     setInput('');
   };
 
@@ -126,31 +130,34 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
               </div>
             );
           })}
-          {sending && !streamingText && (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {sending && !streamingText && !streamingReasoning && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <div style={{
                 width: 24, height: 24, borderRadius: 5,
                 background: 'var(--surface-hover)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, flexShrink: 0,
+                fontSize: 12, flexShrink: 0, marginTop: 2
               }}>
                 {agent?.id === 'director' ? '🎯' : '🤖'}
               </div>
-              <div style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 10, borderBottomLeftRadius: 4,
-                padding: '10px 16px', fontSize: 13, color: 'var(--text-tertiary)',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                {isReasoning ? (
-                  <>Analyzing<span style={{ display:'inline-flex', gap:1 }}><span style={{ animation:'dotDot 1.5s infinite', animationDelay:'0s' }}>.</span><span style={{ animation:'dotDot 1.5s infinite', animationDelay:'0.3s' }}>.</span><span style={{ animation:'dotDot 1.5s infinite', animationDelay:'0.6s' }}>.</span></span></>
-                ) : (
-                  <><span className="pulse" /></>
-                )}
+              <div style={{ maxWidth: '88%' }}>
+                <div style={{
+                  marginBottom: 10, borderRadius: 8, overflow: 'hidden',
+                  border: '1px solid var(--border)', background: 'var(--surface)',
+                }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                    padding: '8px 12px', border: 'none', background: 'var(--surface-hover)',
+                    fontSize: 12, color: 'var(--text-tertiary)',
+                  }}>
+                    <span className="pulse-circle" style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent)' }} />
+                    <span style={{ fontWeight: 500 }}>Thinking process started...</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
-          {streamingText && (
+          {(streamingText || streamingReasoning) && (
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <div style={{
                 width: 24, height: 24, borderRadius: 5,
@@ -164,20 +171,22 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
                 {streamingReasoning && (
                   <ReasoningAccordion text={streamingReasoning} />
                 )}
-                <div style={{
-                  background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 10, borderBottomLeftRadius: 4,
-                  padding: '10px 14px', fontSize: 14,
-                  lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--text)',
-                }}>
-                  {streamingText}
-                  <span style={{
-                    display: 'inline-block', width: 6, height: 14,
-                    background: 'var(--accent)', marginLeft: 2,
-                    borderRadius: 1, verticalAlign: 'text-bottom',
-                    animation: 'blink 0.8s step-end infinite',
-                  }} />
-                </div>
+                {streamingText && (
+                  <div style={{
+                    background: 'var(--surface)', border: '1px solid var(--border)',
+                    borderRadius: 10, borderBottomLeftRadius: 4,
+                    padding: '10px 14px', fontSize: 14,
+                    lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--text)',
+                  }}>
+                    {streamingText}
+                    <span style={{
+                      display: 'inline-block', width: 6, height: 14,
+                      background: 'var(--accent)', marginLeft: 2,
+                      borderRadius: 1, verticalAlign: 'text-bottom',
+                      animation: 'blink 0.8s step-end infinite',
+                    }} />
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -186,16 +195,21 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
       </div>
 
       <div style={{ padding: '16px 24px 20px', borderTop: '1px solid var(--border)', flexShrink: 0, background: 'var(--main-bg)' }}>
-        <div style={{ display: 'flex', gap: 8, maxWidth: 680, margin: '0 auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 4, transition: 'all 0.2s' }}
+        <div style={{ 
+          display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 680, margin: '0 auto', 
+          background: 'var(--surface)', border: '1px solid var(--border)', 
+          borderRadius: 12, padding: 12, transition: 'all 0.2s',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.03)'
+        }}
           onFocusCapture={e => {
             const el = e.currentTarget as HTMLDivElement;
             el.style.borderColor = 'var(--accent)';
-            el.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.08)';
+            el.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.1)';
           }}
           onBlurCapture={e => {
             const el = e.currentTarget as HTMLDivElement;
             el.style.borderColor = 'var(--border)';
-            el.style.boxShadow = 'none';
+            el.style.boxShadow = '0 2px 12px rgba(0,0,0,0.03)';
           }}
         >
           <textarea ref={inputRef} value={input} onChange={handleInput} onKeyDown={handleKeyDown}
@@ -203,34 +217,77 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
             rows={1} disabled={!agent || sending}
             style={{
               flex: 1, background: 'transparent', border: 'none', color: 'var(--text)',
-              fontSize: 14, padding: '8px 12px', resize: 'none', outline: 'none',
-              fontFamily: 'inherit', lineHeight: 1.5, maxHeight: 120,
+              fontSize: 15, padding: '4px 4px', resize: 'none', outline: 'none',
+              fontFamily: 'inherit', lineHeight: 1.5, maxHeight: 150,
               opacity: agent && !sending ? 1 : 0.4,
             }}
           />
-          <button onClick={handleSend} disabled={!input.trim() || sending || !agent}
-            style={{
-              padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none',
-              borderRadius: 8, fontSize: 13, fontWeight: 500, alignSelf: 'flex-end',
-              cursor: input.trim() && !sending && agent ? 'pointer' : 'not-allowed',
-              opacity: input.trim() && !sending && agent ? 1 : 0.4, transition: 'all 0.15s',
-              whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={e => {
-              if (input.trim() && !sending && agent) {
-                e.currentTarget.style.background = 'var(--accent-hover)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'var(--accent)';
-              e.currentTarget.style.transform = 'none';
-            }}
-          >
-            {sending ? '···' : 'Send'}
-          </button>
+          <ProviderWarning model={model} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <select 
+                value={model} 
+                onChange={(e) => setModel(e.target.value)}
+                disabled={!agent || sending}
+                style={{
+                  background: 'var(--surface-hover)', border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)', fontSize: 12, padding: '6px 10px',
+                  borderRadius: 6, outline: 'none', cursor: 'pointer', fontFamily: 'inherit'
+                }}
+              >
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-2.0-flash-thinking">Gemini 2.0 Flash Thinking</option>
+                <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                <option value="gpt-4o">GPT-4o</option>
+              </select>
+
+              <select 
+                value={thinkingMode} 
+                onChange={(e) => setThinkingMode(e.target.value)}
+                disabled={!agent || sending}
+                style={{
+                  background: 'var(--surface-hover)', border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)', fontSize: 12, padding: '6px 10px',
+                  borderRadius: 6, outline: 'none', cursor: 'pointer', fontFamily: 'inherit'
+                }}
+              >
+                <option value="none">No Thinking</option>
+                <option value="easy">Thinking: Easy</option>
+                <option value="medium">Thinking: Medium</option>
+                <option value="hard">Thinking: Hard</option>
+              </select>
+            </div>
+            
+            <button onClick={handleSend} disabled={!input.trim() || sending || !agent}
+              style={{
+                padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none',
+                borderRadius: 8, fontSize: 13, fontWeight: 500,
+                cursor: input.trim() && !sending && agent ? 'pointer' : 'not-allowed',
+                opacity: input.trim() && !sending && agent ? 1 : 0.4, transition: 'all 0.15s',
+                whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6
+              }}
+              onMouseEnter={e => {
+                if (input.trim() && !sending && agent) {
+                  e.currentTarget.style.background = 'var(--accent-hover)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'var(--accent)';
+                e.currentTarget.style.transform = 'none';
+              }}
+            >
+              {sending ? '···' : (
+                <>
+                  Send
+                  <span style={{ fontSize: 14 }}>↑</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
-        <div style={{ textAlign: 'center', marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>
+        <div style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: 'var(--text-tertiary)' }}>
           {agent ? 'Enter to send · Shift+Enter for new line' : 'Select an agent from the sidebar'}
         </div>
       </div>
@@ -239,6 +296,13 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
         @keyframes blink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0; }
+        }
+        @keyframes pulse-op {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
+        }
+        .pulse-circle {
+          animation: pulse-op 1.5s ease-in-out infinite;
         }
         .pulse {
           display: inline-flex; gap: 3px;

@@ -2,13 +2,26 @@ import type { Agent, Message } from '../types';
 
 const API = '/api';
 
-export async function fetchAgents(): Promise<Agent[]> {
-  const data = await fetch(`${API}/agents`).then(r => r.json());
-  return Object.entries(data).map(([id, info]: [string, any]) => ({
-    id,
-    name: info.name || id,
-    description: info.description || '',
-  }));
+export async function fetchAgents(retries = 6, delayMs = 800): Promise<Agent[]> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(`${API}/agents`);
+      if (res.ok) {
+        const data = await res.json();
+        return Object.entries(data).map(([id, info]: [string, any]) => ({
+          id,
+          name: info.name || id,
+          description: info.description || '',
+        }));
+      }
+    } catch {
+      // Server still booting up, wait and retry
+    }
+    if (i < retries - 1) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  return [];
 }
 
 interface StreamCallbacks {
@@ -17,10 +30,70 @@ interface StreamCallbacks {
   onError: (err: string) => void;
   onReasoning?: (text: string) => void;
   onToolCall?: (call: { tool: string; input: string; output?: string }) => void;
+  model?: string;
+  thinkingMode?: string;
 }
 
 function genId(): string {
   return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 10) + '-' + Date.now().toString(36);
+}
+
+export function formatLLMError(err: any): string {
+  const rawMsg = typeof err === 'object' 
+    ? (err?.message || err?.error?.message || err?.error || JSON.stringify(err)) 
+    : String(err || '');
+  const lower = (rawMsg + ' ' + JSON.stringify(err || {})).toLowerCase();
+
+  // 1. Depleted credits / quota limit
+  if (
+    lower.includes('prepayment') ||
+    lower.includes('depleted') ||
+    lower.includes('billing') ||
+    lower.includes('quota') ||
+    lower.includes('resource_exhausted') ||
+    lower.includes('insufficient_funds') ||
+    lower.includes('credit')
+  ) {
+    return `💳 Depleted Credits / Quota Error: Server or API key is out of credits or billing quota is depleted. Please check your provider billing (AI Studio / OpenRouter) or switch to another model.`;
+  }
+
+  // 2. Server heavy load / rate limited (429)
+  if (lower.includes('429') || lower.includes('rate limit') || lower.includes('too_many_requests') || lower.includes('rate_limit')) {
+    return `⏳ Heavy Load / Rate Limited (429): Upstream LLM server is under heavy load or rate-limited. Please wait a few seconds before retrying or select another model.`;
+  }
+
+  // 3. Invalid or missing API key / Auth error (401 / 403)
+  if (
+    lower.includes('401') ||
+    lower.includes('403') ||
+    lower.includes('invalid api key') ||
+    lower.includes('invalid_api_key') ||
+    lower.includes('unauthorized') ||
+    lower.includes('permission_denied')
+  ) {
+    return `🔑 Authentication Error (401/403): Invalid or missing API key. Please check your GOOGLE_API_KEY / OPENROUTER_API_KEY settings in .env.`;
+  }
+
+  // 4. Provider outage / server error (500 / 502 / 503 / 504 / network)
+  if (
+    lower.includes('500') ||
+    lower.includes('502') ||
+    lower.includes('503') ||
+    lower.includes('504') ||
+    lower.includes('overloaded') ||
+    lower.includes('service unavailable') ||
+    lower.includes('internal server error') ||
+    lower.includes('econnrefused') ||
+    lower.includes('fetch failed')
+  ) {
+    return `🚨 Upstream Provider Outage (5xx): The LLM service is experiencing server errors or downtime. Please try again shortly.`;
+  }
+
+  if (rawMsg && rawMsg !== 'Stream error' && rawMsg !== '[object Object]') {
+    return `⚠️ Upstream Error: ${rawMsg}`;
+  }
+
+  return '⚠️ Upstream LLM error. Please try again or switch model.';
 }
 
 export async function sendMessageStream(
@@ -35,6 +108,9 @@ export async function sendMessageStream(
     memory: { thread: tid, resource: 'default-user' },
   };
 
+  if (callbacks?.model) body.model = callbacks.model;
+  if (callbacks?.thinkingMode) body.thinkingMode = callbacks.thinkingMode;
+
   const res = await fetch(`${API}/agents/${agentId}/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -43,7 +119,7 @@ export async function sendMessageStream(
 
   if (!res.ok) {
     const text = await res.text().catch(() => 'Unknown error');
-    callbacks?.onError(`HTTP ${res.status}: ${text}`);
+    callbacks?.onError(formatLLMError(text));
     return { threadId: tid };
   }
 
@@ -133,9 +209,9 @@ function parseSSE(
               }
               return;
             } else if (type === 'error') {
-              const errMsg = parsed.error?.message || parsed.error || parsed.message || 'Stream error';
-              console.error('[SSE error]', errMsg);
-              callbacks?.onError(errMsg);
+              const rawErr = parsed.error || parsed.message || parsed.payload || 'Stream error';
+              console.error('[SSE error]', rawErr);
+              callbacks?.onError(formatLLMError(rawErr));
             }
           } catch (e) {
             console.warn('[SSE] non-JSON data (skipped):', data);
