@@ -121,15 +121,16 @@ export default function App() {
       setSending(true);
       setIsReasoning(false);
 
+      const activeThreadId = threadId || ('t-' + Date.now());
       const userMsg: Message = { id: 't-' + Date.now(), role: 'user', content, createdAt: new Date().toISOString() };
       setMessages(prev => [...prev, userMsg]);
 
       try {
-        const result = await sendMessageStream(selectedAgentId, content, threadId || undefined, {
+        const result = await sendMessageStream(selectedAgentId, content, activeThreadId, {
           ...options,
           onText: (text) => { setIsReasoning(false); setStreamingText(text); },
           onReasoning: (reasoning) => { setIsReasoning(true); setStreamingReasoning(reasoning); },
-          onFinish: (fullText, reasoning) => {
+          onFinish: (fullText, reasoning, streamThreadId) => {
             const assistantMsg: Message = {
               id: 'a-' + Date.now(),
               role: 'assistant',
@@ -137,11 +138,10 @@ export default function App() {
               reasoning,
               createdAt: new Date().toISOString(),
             };
+            const targetTid = streamThreadId || activeThreadId;
             setMessages(prev => {
               const updated = [...prev, assistantMsg];
-              if (result.threadId) {
-                saveThreadMessages(result.threadId, updated);
-              }
+              saveThreadMessages(targetTid, updated);
               return updated;
             });
             setStreamingText('');
@@ -158,16 +158,15 @@ export default function App() {
             setIsReasoning(false);
           },
         });
-        if (result.threadId) {
-          setThreadId(result.threadId);
-          setThreads(prev => {
-            const existing = prev.find(t => t.id === result.threadId);
-            if (existing) return prev;
-            const updated = [{ id: result.threadId!, title: summarize(content), agentId: selectedAgentId }, ...prev];
-            saveThreads(updated);
-            return updated;
-          });
-        }
+        const finalTid = result.threadId || activeThreadId;
+        setThreadId(finalTid);
+        setThreads(prev => {
+          const existing = prev.find(t => t.id === finalTid);
+          if (existing) return prev;
+          const updated = [{ id: finalTid, title: summarize(content), agentId: selectedAgentId }, ...prev];
+          saveThreads(updated);
+          return updated;
+        });
       } catch (err: any) {
         setMessages(prev => [...prev, {
           id: 'e-' + Date.now(), role: 'assistant',

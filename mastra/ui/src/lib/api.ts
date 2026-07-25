@@ -53,7 +53,7 @@ export async function fetchAgents(retries = 6, delayMs = 800): Promise<Agent[]> 
 
 interface StreamCallbacks {
   onText: (delta: string) => void;
-  onFinish: (fullText: string, reasoning?: string) => void;
+  onFinish: (fullText: string, reasoning?: string, threadId?: string) => void;
   onError: (err: string) => void;
   onReasoning?: (text: string) => void;
   onToolCall?: (call: { tool: string; input: string; output?: string }) => void;
@@ -182,7 +182,7 @@ export async function sendMessageStream(
   const data = await res.json();
   const resolvedTid = data.threadId || threadIdHeader;
   const text = extractText(data);
-  if (text) callbacks?.onFinish(text);
+  if (text) callbacks?.onFinish(text, undefined, resolvedTid);
   return { threadId: resolvedTid };
 }
 
@@ -198,7 +198,7 @@ function parseSSE(
 
     const reader = res.body?.getReader();
     if (!reader) {
-      callbacks?.onFinish('');
+      callbacks?.onFinish('', undefined, threadId);
       resolve({ threadId });
       return;
     }
@@ -218,7 +218,7 @@ function parseSSE(
             console.log('[SSE] [DONE] received');
             if (!resolved) {
               resolved = true;
-              callbacks?.onFinish(accumulated, accumulatedReasoning);
+              callbacks?.onFinish(accumulated, accumulatedReasoning, threadId);
               resolve({ threadId });
             }
             return;
@@ -253,7 +253,7 @@ function parseSSE(
               console.log('[SSE] finish event, accumulated.length=%d', accumulated.length);
               if (!resolved) {
                 resolved = true;
-                callbacks?.onFinish(accumulated, accumulatedReasoning);
+                callbacks?.onFinish(accumulated, accumulatedReasoning, threadId);
                 resolve({ threadId });
               }
               return;
@@ -277,7 +277,7 @@ function parseSSE(
           if (!resolved) {
             console.warn('[SSE] stream ended without finish event, accumulated.length=%d', accumulated.length);
             resolved = true;
-            callbacks?.onFinish(accumulated, accumulatedReasoning);
+            callbacks?.onFinish(accumulated, accumulatedReasoning, threadId);
             resolve({ threadId });
           }
           return;
