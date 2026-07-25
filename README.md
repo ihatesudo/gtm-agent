@@ -286,6 +286,29 @@ Or open the Mastra Studio for a visual chat interface:
 cd mastra && npm run dev   # → http://localhost:4111
 ```
 
+### Environment configuration (`.env`)
+
+You can place your `.env` file in either (or both) of the following locations:
+
+- **Root directory (`./.env`)**: Sourced by all `Makefile` commands and recommended for Python CLI.
+- **Mastra sub-directory (`mastra/.env`)**: Sourced by `Makefile` commands as well as native Mastra CLI commands (`cd mastra && npm run dev`).
+
+> 💡 **Note**: All `Makefile` commands (`make run`, `make dev`, `make test`, `make env`, etc.) automatically load variables from **both** `./.env` and `mastra/.env` if present.
+
+To set up:
+
+```bash
+cp .env.example .env               # Root configuration
+# OR
+cp mastra/.env.example mastra/.env   # Mastra engine configuration
+```
+
+Key environment variables:
+- `OPENROUTER_API_KEY`: API key for OpenRouter models (`openrouter/auto`, etc.).
+- `GENAI_PROVIDER`: Model provider selector (`openrouter`, `vertex`, or `api`).
+- `GEMINI_API_KEY`: API key for Gemini Developer API (when `GENAI_PROVIDER=api`).
+
+
 ### Web app with passwordless login
 
 The Reflex app is available through `make web`. It uses Appwrite Magic URL

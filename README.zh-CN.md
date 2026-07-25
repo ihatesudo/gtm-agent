@@ -253,6 +253,29 @@ node run.mjs           # 一键生成市场活动方案
 cd mastra && npm run dev   # → http://localhost:4111
 ```
 
+### 环境配置 (`.env`)
+
+您可以将 `.env` 文件放置在以下任意位置（或同时放置）：
+
+- **根目录 (`./.env`)**: 所有 `Makefile` 命令会自动加载，推荐用于 Python CLI。
+- **Mastra 子目录 (`mastra/.env`)**: `Makefile` 命令及原生 Mastra CLI 命令（`cd mastra && npm run dev`）均支持加载。
+
+> 💡 **提示**: 所有 `Makefile` 命令（如 `make run`、`make dev`、`make test`、`make env` 等）会自动从 `./.env` 和 `mastra/.env` **两者**中加载环境变量。
+
+快速配置：
+
+```bash
+cp .env.example .env               # 根目录配置
+# 或
+cp mastra/.env.example mastra/.env   # Mastra 引擎配置
+```
+
+核心环境变量：
+- `OPENROUTER_API_KEY`: OpenRouter 模型 API 密钥。
+- `GENAI_PROVIDER`: 模型提供商选择器 (`openrouter`、`vertex` 或 `api`)。
+- `GEMINI_API_KEY`: 当 `GENAI_PROVIDER=api` 时的 Gemini API 密钥。
+
+
 ### Web 应用与免密登录
 
 Reflex 应用通过 `make web` 启动。它使用 Appwrite Magic URL 认证：

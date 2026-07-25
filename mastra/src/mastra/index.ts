@@ -134,7 +134,7 @@ export const mastra = new Mastra({
         requestContext.set('cloudflareBindings', c.env);
         // Thread the UI's runtime model choice into requestContext
         if (c.req.method === 'POST') {
-          const body = await c.req.json().catch(() => null as null | Record<string, unknown>);
+          const body = await c.req.raw.clone().json().catch(() => null as null | Record<string, unknown>);
           if (body && typeof body.modelChoice === 'string') {
             requestContext.set('modelChoice', body.modelChoice);
           }

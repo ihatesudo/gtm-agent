@@ -18,7 +18,9 @@
     "db:bootstrap": "node scripts/bootstrap-turso.mjs",
     "postbuild": "npm run ui:build",
     "test:smoke": "node ui/scripts/smoke-test.mjs",
-    "test:smoke:live": "MASTRA_URL=http://localhost:4111 node ui/scripts/smoke-test.mjs"
+    "test:smoke:live": "MASTRA_URL=http://localhost:4111 node ui/scripts/smoke-test.mjs",
+    "test:integration": "node ui/scripts/integration-test.mjs",
+    "test:integration:live": "MASTRA_URL=http://localhost:4111 node ui/scripts/integration-test.mjs"
   },
   "dependencies": {
     "@ai-sdk/google-vertex": "^5.0.30",
