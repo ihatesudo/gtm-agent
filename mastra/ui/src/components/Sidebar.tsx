@@ -19,6 +19,8 @@ interface Props {
   onSelectThread?: (id: string) => void;
   onDeleteThread?: (id: string) => void;
   onOpenSettings?: () => void;
+  onOpenObservability?: () => void;
+  onOpenAgentEditor?: () => void;
 }
 
 const NAV_ITEMS: { id: string; label: string; icon: IconName }[] = [
@@ -36,7 +38,19 @@ const AGENT_ICONS: Record<string, IconName> = {
   'lifecycle-retention': 'spark',
 };
 
-export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewChat, threads, selectedThreadId, onSelectThread, onDeleteThread, onOpenSettings }: Props) {
+export default function Sidebar({
+  agents,
+  selectedAgentId,
+  onSelectAgent,
+  onNewChat,
+  threads,
+  selectedThreadId,
+  onSelectThread,
+  onDeleteThread,
+  onOpenSettings,
+  onOpenObservability,
+  onOpenAgentEditor,
+}: Props) {
   const [activeNav, setActiveNav] = useState('new-task');
 
   return (
@@ -109,6 +123,58 @@ export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewC
         )}
       </div>
 
+      {/* Mastra Tools Section */}
+      <div style={{ padding: '0 10px', marginBottom: 8 }}>
+        {onOpenObservability && (
+          <div
+            onClick={onOpenObservability}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+              fontSize: 12.5,
+              marginBottom: 3,
+              background: 'transparent',
+              color: 'var(--sidebar-text)',
+              fontWeight: 500,
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--sidebar-hover)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <Icon name="chart" size={15} style={{ color: 'var(--accent)' }} />
+            <span>Observability</span>
+          </div>
+        )}
+        {onOpenAgentEditor && (
+          <div
+            onClick={onOpenAgentEditor}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+              fontSize: 12.5,
+              marginBottom: 3,
+              background: 'transparent',
+              color: 'var(--sidebar-text)',
+              fontWeight: 500,
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--sidebar-hover)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <Icon name="edit" size={15} style={{ color: 'var(--accent)' }} />
+            <span>Prompt Editor</span>
+          </div>
+        )}
+      </div>
+
       {/* Navigation Links */}
       <div style={{ padding: '0 10px', marginBottom: 12 }}>
         {NAV_ITEMS.map(item => {
@@ -138,6 +204,7 @@ export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewC
           );
         })}
       </div>
+
 
       {/* Conversations Section Header */}
       <div style={{
@@ -327,7 +394,7 @@ export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewC
         fontSize: 11,
         color: 'var(--sidebar-text-dim)',
         display: 'flex',
-        justify: 'space-between',
+        justifyContent: 'space-between',
         alignItems: 'center',
       }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>

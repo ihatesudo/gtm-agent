@@ -329,3 +329,70 @@ function extractText(data: any): string {
   }
   return '';
 }
+
+export interface TelemetryData {
+  enabled: boolean;
+  serviceName: string;
+  tracesCount: number;
+  logsCount: number;
+  recentTraces: Array<{
+    traceId?: string;
+    spanId?: string;
+    name?: string;
+    spanType?: string;
+    startedAt?: string;
+    duration?: number;
+  }>;
+  recentLogs: Array<{
+    timestamp?: string;
+    level?: string;
+    message?: string;
+    source?: string;
+  }>;
+  error?: string;
+}
+
+export interface StoredAgentOverride {
+  id: string;
+  name?: string;
+  instructions?: string;
+  status?: 'draft' | 'published';
+  updatedAt?: string;
+}
+
+export async function fetchTelemetryData(): Promise<TelemetryData | null> {
+  try {
+    const res = await fetch(`${API}/observability/telemetry`);
+    if (res.ok) return await res.json();
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export async function fetchAgentOverrides(): Promise<StoredAgentOverride[]> {
+  try {
+    const res = await fetch(`${API}/editor/agent-overrides`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.storedAgents || [];
+    }
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+export async function saveAgentOverride(agentId: string, instructions: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API}/editor/agent-overrides/${agentId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instructions }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+

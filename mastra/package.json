@@ -26,8 +26,10 @@
     "@libsql/client": "latest",
     "@mastra/core": "latest",
     "@mastra/deployer-cloudflare": "latest",
+    "@mastra/editor": "^0.13.8",
     "@mastra/libsql": "latest",
     "@mastra/memory": "latest",
+    "@mastra/observability": "^1.16.2",
     "zod": "^4.0.0"
   },
   "devDependencies": {

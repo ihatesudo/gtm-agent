@@ -55,6 +55,9 @@ function deleteThreadMessages(threadId: string) {
   } catch { /* ignore */ }
 }
 
+import { ObservabilityModal } from './components/ObservabilityModal';
+import { AgentEditorModal } from './components/AgentEditorModal';
+
 export default function App() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
@@ -68,6 +71,8 @@ export default function App() {
 
   const [settings, setSettings] = useState<UserCustomization>(loadSettings);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isObservabilityOpen, setIsObservabilityOpen] = useState(false);
+  const [isAgentEditorOpen, setIsAgentEditorOpen] = useState(false);
 
   useEffect(() => {
     applyFontToDocument(settings.fontStyle);
@@ -203,6 +208,8 @@ export default function App() {
         onSelectThread={handleSelectThread}
         onDeleteThread={handleDeleteThread}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenObservability={() => setIsObservabilityOpen(true)}
+        onOpenAgentEditor={() => setIsAgentEditorOpen(true)}
       />
       {isEmpty ? (
         <WelcomeView onSend={handleSend} sending={sending} />
@@ -223,9 +230,20 @@ export default function App() {
         settings={settings}
         onUpdateSettings={setSettings}
       />
+      <ObservabilityModal
+        isOpen={isObservabilityOpen}
+        onClose={() => setIsObservabilityOpen(false)}
+      />
+      <AgentEditorModal
+        isOpen={isAgentEditorOpen}
+        onClose={() => setIsAgentEditorOpen(false)}
+        agents={agents}
+        selectedAgentId={selectedAgentId}
+      />
     </div>
   );
 }
+
 
 
 
