@@ -228,6 +228,9 @@ export default function App() {
         <WelcomeView onSend={handleSend} sending={sending} />
       ) : (
         <ChatView
+          agents={agents}
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={setSelectedAgentId}
           agent={selectedAgent}
           messages={messages}
           streamingText={streamingText}

@@ -6,6 +6,9 @@ import type { Message } from '../types';
 
 const mockAgent = { id: 'director', name: 'GTM Director', description: 'Orchestrator' };
 const defaultProps = {
+  agents: [mockAgent, { id: 'seo', name: 'SEO Specialist', description: 'SEO expert' }],
+  selectedAgentId: 'director',
+  onSelectAgent: vi.fn(),
   agent: mockAgent,
   messages: [] as any[],
   streamingText: '',
@@ -18,7 +21,7 @@ const defaultProps = {
 describe('ChatView', () => {
   it('renders agent header', () => {
     render(<ChatView {...defaultProps} />);
-    expect(screen.getByText('GTM Director')).toBeInTheDocument();
+    expect(screen.getAllByText('GTM Director').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders user and assistant messages', () => {

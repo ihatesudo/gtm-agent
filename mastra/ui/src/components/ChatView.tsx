@@ -4,6 +4,9 @@ import { ProviderWarning } from './ProviderWarning';
 import Icon from './Icon';
 
 interface Props {
+  agents: Agent[];
+  selectedAgentId: string;
+  onSelectAgent: (id: string) => void;
   agent?: Agent;
   messages: Message[];
   streamingText: string;
@@ -339,7 +342,7 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
   );
 }
 
-export default function ChatView({ agent, messages, streamingText, streamingReasoning, streamingToolCalls = [], sending, isReasoning, onSend }: Props) {
+export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent, messages, streamingText, streamingReasoning, streamingToolCalls = [], sending, isReasoning, onSend }: Props) {
 
   const [input, setInput] = useState('');
   const [model, setModel] = useState('openrouter');
@@ -631,6 +634,28 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
             <div style={{ display: 'flex', gap: 8 }}>
+              <select
+                value={selectedAgentId}
+                onChange={(e) => onSelectAgent(e.target.value)}
+                disabled={sending}
+                style={{
+                  background: 'var(--surface-hover)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
+                  fontSize: 12,
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  fontWeight: 600,
+                }}
+              >
+                {agents.map(a => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+
               <select 
                 value={model} 
                 onChange={(e) => setModel(e.target.value)}
