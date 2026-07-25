@@ -2,7 +2,7 @@ import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { ALL_GTM_TOOLS } from '../tools/gtm-tools.js';
 import { ALL_SPECIALIST_AGENTS } from './specialists.js';
-import { getAgentModel } from '../model.js';
+import { modelFromChoice } from '../model.js';
 
 export const directorAgent = new Agent({
   id: 'director',
@@ -35,7 +35,7 @@ export const directorAgent = new Agent({
 - Save long-form deliverables using save_asset
 - Reply in the user's language (Chinese or English)
 - Keep recommendations actionable: end with concrete next steps`,
-  model: getAgentModel('director', 'gemini-2.5-flash'),
+  model: modelFromChoice('director', 'gemini-2.5-flash'),
   tools: ALL_GTM_TOOLS,
   agents: ALL_SPECIALIST_AGENTS,
   memory: new Memory({

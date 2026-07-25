@@ -177,7 +177,7 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
             }}>
               <div style={{
                 display: 'flex',
-                justify: 'space-between',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '6px 12px',
                 background: '#292524',
@@ -186,7 +186,7 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
                 fontFamily: 'var(--font-mono)',
               }}>
                 <span>{block.lang}</span>
-                <CopyButton text={block.code} label="Copy code" />
+                <CopyButton text={block.code || ''} label="Copy code" />
               </div>
               <pre style={{
                 padding: 14,
@@ -206,7 +206,7 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
         }
 
         // Render text section line by line
-        const lines = block.content.split('\n');
+        const lines = (block.content || '').split('\n');
         return (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {lines.map((line, lIdx) => {
@@ -243,7 +243,7 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
 export default function ChatView({ agent, messages, streamingText, streamingReasoning, sending, isReasoning, onSend }: Props) {
 
   const [input, setInput] = useState('');
-  const [model, setModel] = useState('openrouter/auto');
+  const [model, setModel] = useState('gemini-flash');
   const [thinkingMode, setThinkingMode] = useState('medium');
   
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -535,11 +535,10 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
                   fontWeight: 500,
                 }}
               >
-                <option value="openrouter/auto">OpenRouter (Auto - Default)</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Vertex AI)</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro (Vertex AI)</option>
-                <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-                <option value="gpt-4o">GPT-4o</option>
+                <option value="gemini-flash">Gemini 2.5 Flash (Vertex)</option>
+                <option value="gemini-pro">Gemini 2.5 Pro (Vertex)</option>
+                <option value="openrouter">OpenRouter (Auto)</option>
+                <option value="glm">GLM-5.2 (智谱 Coding Plan)</option>
               </select>
 
               <select 

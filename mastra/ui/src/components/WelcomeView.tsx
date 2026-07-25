@@ -17,7 +17,7 @@ const QUICK_PILLS = [
 
 export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
   const [input, setInput] = useState('');
-  const [model, setModel] = useState('openrouter/auto');
+  const [model, setModel] = useState('gemini-flash');
   const [thinkingMode, setThinkingMode] = useState('medium');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -78,11 +78,10 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
                 disabled={sending}
                 style={styles.select}
               >
-                <option value="openrouter/auto">OpenRouter (Auto - Default)</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Vertex AI)</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro (Vertex AI)</option>
-                <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-                <option value="gpt-4o">GPT-4o</option>
+                <option value="gemini-flash">Gemini 2.5 Flash (Vertex)</option>
+                <option value="gemini-pro">Gemini 2.5 Pro (Vertex)</option>
+                <option value="openrouter">OpenRouter (Auto)</option>
+                <option value="glm">GLM-5.2 (智谱 Coding Plan)</option>
               </select>
 
               <select 

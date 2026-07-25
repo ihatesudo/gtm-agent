@@ -53,6 +53,16 @@ export const mastra = new Mastra({
       const requestContext = c.get('requestContext') as { set: (key: string, value: unknown) => void };
       if (requestContext?.set) {
         requestContext.set('cloudflareBindings', c.env);
+        // Thread the UI's runtime model choice (gemini-flash / gemini-pro /
+        // openrouter / glm) into requestContext so each agent's model function
+        // can pick the right provider instance. Read body with a safe fallback;
+        // Hono caches the parsed JSON for the downstream handler.
+        if (c.req.method === 'POST') {
+          const body = await c.req.json().catch(() => null as null | Record<string, unknown>);
+          if (body && typeof body.modelChoice === 'string') {
+            requestContext.set('modelChoice', body.modelChoice);
+          }
+        }
       }
       await next();
     },

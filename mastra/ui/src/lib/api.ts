@@ -2,7 +2,7 @@ import type { Agent, Message } from '../types';
 
 const API = '/api';
 
-export type ProviderName = 'openrouter' | 'google' | 'vertex';
+export type ProviderName = 'openrouter' | 'google' | 'vertex' | 'zhipu';
 
 export interface ProviderState {
   configured: boolean;
@@ -27,26 +27,6 @@ export async function fetchConnectivityStatus(timeoutMs = 5000): Promise<Connect
     // network/timeout — surface as "unknown" via null
   }
   return null;
-}
-
-// Legacy shape retained for ProviderWarning; derived from the new payload.
-export interface ProviderStatus {
-  google: boolean;
-  openrouter: boolean;
-  anthropic: boolean;
-  openai: boolean;
-}
-
-export async function fetchProviderStatus(): Promise<ProviderStatus> {
-  const s = await fetchConnectivityStatus();
-  if (!s) return { google: false, openrouter: false, anthropic: false, openai: false };
-  return {
-    google: s.providers.google.configured,
-    openrouter: s.providers.openrouter.configured,
-    // claude/gpt models route through OpenRouter in this app; no direct keys.
-    anthropic: s.providers.openrouter.configured,
-    openai: s.providers.openrouter.configured,
-  };
 }
 
 export async function fetchAgents(retries = 6, delayMs = 800): Promise<Agent[]> {
@@ -155,7 +135,10 @@ export async function sendMessageStream(
     memory: { thread: tid, resource: 'default-user' },
   };
 
-  if (callbacks?.model) body.model = callbacks.model;
+  // Send as modelChoice (not model) so Mastra treats it as our own runtime
+  // selector (read via requestContext) instead of a string modelConfig that
+  // would fall through to the ModelRouter gateway.
+  if (callbacks?.model) body.modelChoice = callbacks.model;
   if (callbacks?.thinkingMode) body.thinkingMode = callbacks.thinkingMode;
 
   const res = await fetch(`${API}/agents/${agentId}/stream`, {

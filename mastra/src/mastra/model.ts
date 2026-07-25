@@ -10,6 +10,12 @@ import { createOpenAI } from '@ai-sdk/openai';
 export type AgentRole = 'director' | 'specialist';
 
 /**
+ * Runtime model choice, selected in the UI and forwarded via requestContext.
+ * Each key maps to a concrete provider instance (see resolveModelForChoice).
+ */
+export type ModelChoice = 'gemini-flash' | 'gemini-pro' | 'openrouter' | 'glm';
+
+/**
  * Resolve the model id for a given role. Director and Specialist each read
  * their OWN env var, so the two roles never compete for the same fallback
  * chain. `defaultModel` only applies when the role-specific var is absent.
@@ -87,14 +93,8 @@ export function getAgentModel(role: AgentRole, defaultModel: string) {
 
   // 2. Vertex AI Provider (GCP Trial Credits via Service Account / Express mode)
   if (provider === 'vertex' || env.GOOGLE_GENAI_USE_VERTEXAI === 'true') {
-    const apiKey = env.GOOGLE_VERTEX_API_KEY; // Express mode (simplest, no SA)
-    const vertex = createGoogleVertex({
-      project: env.GOOGLE_CLOUD_PROJECT || env.GOOGLE_VERTEX_PROJECT || 'project-babe4c82-37e1-4f22-ac0',
-      location: env.GOOGLE_CLOUD_LOCATION || env.GOOGLE_VERTEX_LOCATION || 'us-central1',
-      ...(apiKey ? { apiKey } : { googleCredentials: resolveVertexCredentials(env) || undefined }),
-    });
     const modelId = customModel.replace(/^(google\/|vertex\/)/, '');
-    return vertex(modelId);
+    return createVertexProvider(env)(modelId);
   }
 
   // 3. Fallback Google Provider
@@ -102,4 +102,74 @@ export function getAgentModel(role: AgentRole, defaultModel: string) {
     apiKey: env.GOOGLE_API_KEY || env.GEMINI_API_KEY || 'dummy-key',
   });
   return google(customModel.replace(/^google\//, ''));
+}
+
+// ─── Provider factories (reused by getAgentModel and resolveModelForChoice) ┤
+
+/** Vertex AI via /edge (WebCrypto JWT, Worker-compatible). Express key wins. */
+function createVertexProvider(env: Record<string, string | undefined> = process.env) {
+  const apiKey = env.GOOGLE_VERTEX_API_KEY; // Express mode (simplest, no SA)
+  return createGoogleVertex({
+    project: env.GOOGLE_CLOUD_PROJECT || env.GOOGLE_VERTEX_PROJECT || 'project-babe4c82-37e1-4f22-ac0',
+    location: env.GOOGLE_CLOUD_LOCATION || env.GOOGLE_VERTEX_LOCATION || 'us-central1',
+    ...(apiKey ? { apiKey } : { googleCredentials: resolveVertexCredentials(env) || undefined }),
+  });
+}
+
+/** OpenAI-compatible OpenRouter. */
+function createOpenRouterProvider(env: Record<string, string | undefined> = process.env) {
+  return createOpenAI({
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: env.OPENROUTER_API_KEY || '',
+  });
+}
+
+/**
+ * Zhipu GLM via the Coding Plan OpenAI-compatible endpoint.
+ * Domestic (open.bigmodel.cn) by default; override with ZHIPU_BASE_URL.
+ */
+function createZhipuProvider(env: Record<string, string | undefined> = process.env) {
+  return createOpenAI({
+    baseURL: env.ZHIPU_BASE_URL || 'https://open.bigmodel.cn/api/coding/paas/v4',
+    apiKey: env.ZHIPU_API_KEY || '',
+  });
+}
+
+/**
+ * Resolve a UI-selected ModelChoice to a concrete provider instance.
+ * Returns null when choice is absent/unknown — caller falls back to
+ * getAgentModel(role, default). This is what makes the UI dropdown work:
+ * the agent.model function reads the choice from requestContext and returns
+ * the matching instance, so the request never falls through to Mastra's
+ * string-based ModelRouter gateway.
+ */
+export function resolveModelForChoice(
+  choice: ModelChoice | undefined,
+  env: Record<string, string | undefined> = process.env,
+) {
+  switch (choice) {
+    case 'gemini-flash':
+      return createVertexProvider(env)('gemini-2.5-flash');
+    case 'gemini-pro':
+      return createVertexProvider(env)('gemini-2.5-pro');
+    case 'openrouter':
+      return createOpenRouterProvider(env)('openrouter/auto');
+    case 'glm':
+      return createZhipuProvider(env)('glm-5.2');
+    default:
+      return null;
+  }
+}
+
+/**
+ * Agent `model` resolver: picks the provider instance from the UI's runtime
+ * choice (threaded through requestContext), falling back to the role's default
+ * provider/model when no choice is present. Used as the `model` field on every
+ * agent so the dropdown actually switches the model at request time.
+ */
+export function modelFromChoice(role: AgentRole, defaultModel: string) {
+  return async ({ requestContext }: { requestContext?: { get: (key: string) => unknown } }) => {
+    const choice = requestContext?.get('modelChoice') as ModelChoice | undefined;
+    return resolveModelForChoice(choice) ?? getAgentModel(role, defaultModel);
+  };
 }

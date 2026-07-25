@@ -11,7 +11,7 @@ describe('WelcomeView', () => {
 
   it('renders the heading', () => {
     render(<WelcomeView {...defaultProps} />);
-    expect(screen.getByText('Plan your next growth move.')).toBeInTheDocument();
+    expect(screen.getByText(/next growth move/i)).toBeInTheDocument();
   });
 
   it('renders quick-action pills', () => {

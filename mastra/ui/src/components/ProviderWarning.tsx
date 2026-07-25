@@ -1,30 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { fetchProviderStatus, type ProviderStatus } from '../lib/api';
+import { fetchConnectivityStatus, type ConnectivityStatus, type ProviderName } from '../lib/api';
 
 interface Props {
   model: string;
 }
 
+/** Map a UI model choice to the provider it uses and the env var that must be set. */
+const CHOICE_PROVIDER: Record<string, { provider: ProviderName; key: string }> = {
+  'gemini-flash': { provider: 'vertex', key: 'GOOGLE_APPLICATION_CREDENTIALS' },
+  'gemini-pro': { provider: 'vertex', key: 'GOOGLE_APPLICATION_CREDENTIALS' },
+  'openrouter': { provider: 'openrouter', key: 'OPENROUTER_API_KEY' },
+  'glm': { provider: 'zhipu', key: 'ZHIPU_API_KEY' },
+};
+
 export function ProviderWarning({ model }: Props) {
-  const [status, setStatus] = useState<ProviderStatus | null>(null);
+  const [status, setStatus] = useState<ConnectivityStatus | null>(null);
 
   useEffect(() => {
-    fetchProviderStatus().then(setStatus);
+    fetchConnectivityStatus().then(setStatus);
   }, []);
 
-  let missingKeys: string[] = [];
+  const target = CHOICE_PROVIDER[model];
+  const configured = target ? status?.providers?.[target.provider]?.configured : true;
+  // Unknown choice or already configured → nothing to warn about.
+  if (!target || configured) return null;
 
-  if (model.includes('claude')) {
-    if (!status || !status.anthropic) {
-      missingKeys = ['ANTHROPIC_API_KEY'];
-    }
-  } else if (model.includes('gpt')) {
-    if (!status || !status.openai) {
-      missingKeys = ['OPENAI_API_KEY'];
-    }
-  }
-
-  if (missingKeys.length === 0) return null;
+  const missingKeys = [target.key];
 
   return (
     <div style={{ 

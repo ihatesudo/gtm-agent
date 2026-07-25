@@ -1,6 +1,6 @@
 import { resolveVertexCredentials } from './model.js';
 
-export type ProviderName = 'openrouter' | 'google' | 'vertex';
+export type ProviderName = 'openrouter' | 'google' | 'vertex' | 'zhipu';
 
 export interface ProviderState {
   configured: boolean;
@@ -89,6 +89,16 @@ function vertexConfigured(env: Env): boolean {
   return !!(env.GOOGLE_VERTEX_API_KEY || resolveVertexCredentials(env));
 }
 
+/**
+ * Zhipu (GLM Coding Plan). configured = API key present. We don't probe
+ * reachability independently — the OpenAI-compatible endpoint has no
+ * uniform free key-validation route, so the first real request validates it.
+ */
+function checkZhipu(env: Env): ProviderState {
+  if (!env.ZHIPU_API_KEY) return { configured: false, reachable: false };
+  return { configured: true, reachable: true };
+}
+
 function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message || 'unknown error';
   return String(e);
@@ -109,8 +119,9 @@ export async function runConnectivityCheck(envSource: Record<string, unknown> = 
   const openrouter = active === 'openrouter' ? await checkOpenRouter(openrouterKey) : { configured: !!openrouterKey, reachable: false };
   const google = active === 'google' ? await checkGoogle(googleKey) : { configured: !!googleKey, reachable: false };
   const vertex = active === 'vertex' ? checkVertex(env) : { configured: vertexConfigured(env), reachable: false };
+  const zhipu = checkZhipu(env);
 
-  return { active, providers: { openrouter, google, vertex }, checkedAt: Date.now() };
+  return { active, providers: { openrouter, google, vertex, zhipu }, checkedAt: Date.now() };
 }
 
 // --- Lazy + TTL cache: Workers have no startup hook, so the first status
@@ -135,6 +146,7 @@ export async function getCachedConnectivity(envSource: Record<string, unknown> =
             openrouter: { configured: false, reachable: false, error: errMsg(err) },
             google: { configured: false, reachable: false },
             vertex: { configured: false, reachable: false },
+            zhipu: { configured: false, reachable: false },
           },
           checkedAt: Date.now(),
         };
