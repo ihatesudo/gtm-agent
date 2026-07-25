@@ -39,7 +39,14 @@ describe('WelcomeView', () => {
     expect(screen.getByPlaceholderText(/ask me anything|type.*message|what.*want/i)).toBeInTheDocument();
   });
 
-  it('sends custom prompt on submit button click', async () => {
+  it('defaults model dropdown to OpenRouter', () => {
+    render(<WelcomeView {...defaultProps} />);
+    const modelSelect = screen.getByDisplayValue('OpenRouter (Auto)');
+    expect(modelSelect).toBeInTheDocument();
+    expect((modelSelect as HTMLSelectElement).value).toBe('openrouter');
+  });
+
+  it('sends custom prompt with default model "openrouter" on submit', async () => {
     const onSend = vi.fn();
     render(<WelcomeView {...defaultProps} onSend={onSend} />);
     const user = userEvent.setup();
@@ -50,7 +57,7 @@ describe('WelcomeView', () => {
     const submitBtn = screen.getByRole('button', { name: /send|submit|→/i });
     await user.click(submitBtn);
 
-    expect(onSend).toHaveBeenCalledWith('Write a blog post', expect.objectContaining({ model: expect.any(String), thinkingMode: expect.any(String) }));
+    expect(onSend).toHaveBeenCalledWith('Write a blog post', expect.objectContaining({ model: 'openrouter', thinkingMode: expect.any(String) }));
   });
 
   it('sends custom prompt on Enter (without Shift)', async () => {

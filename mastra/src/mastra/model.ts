@@ -120,7 +120,7 @@ export function getAgentModel(role: AgentRole, defaultModel: string) {
     return createVertexProvider(env)(modelId);
   }
 
-  // 2. Default: OpenRouter (free-tier models). One key (OPENROUTER_API_KEY) is enough.
+  // 2. Default: OpenRouter (free-tier models, chat completions). One key (OPENROUTER_API_KEY) is enough.
   const openrouter = createOpenAI({
     baseURL: 'https://openrouter.ai/api/v1',
     apiKey: env.OPENROUTER_API_KEY || '',
@@ -128,7 +128,7 @@ export function getAgentModel(role: AgentRole, defaultModel: string) {
   // Role-specific model wins; otherwise the shared OPENROUTER_MODEL; else auto.
   const roleModel = role === 'director' ? env.DIRECTOR_MODEL : env.SPECIALIST_MODEL;
   const modelId = roleModel || env.OPENROUTER_MODEL || 'openrouter/auto';
-  return openrouter(modelId);
+  return openrouter.chat(modelId);
 }
 
 // ─── Provider factories (reused by getAgentModel and resolveModelForChoice) ┤
@@ -192,9 +192,9 @@ export function resolveModelForChoice(
     case 'gemini-pro':
       return createVertexProvider(env)('gemini-2.5-pro');
     case 'openrouter':
-      return createOpenRouterProvider(env)('openrouter/auto');
+      return createOpenRouterProvider(env).chat('openrouter/auto');
     case 'glm':
-      return createZhipuProvider(env)('glm-5.2');
+      return createZhipuProvider(env).chat('glm-5.2');
     default:
       return null;
   }

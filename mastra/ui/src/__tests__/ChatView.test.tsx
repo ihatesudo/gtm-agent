@@ -74,7 +74,14 @@ describe('ChatView', () => {
     expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument();
   });
 
-  it('calls onSend on submit', async () => {
+  it('defaults model dropdown to OpenRouter', () => {
+    render(<ChatView {...defaultProps} />);
+    const modelSelect = screen.getByDisplayValue('OpenRouter (Auto)');
+    expect(modelSelect).toBeInTheDocument();
+    expect((modelSelect as HTMLSelectElement).value).toBe('openrouter');
+  });
+
+  it('calls onSend on submit with default model "openrouter"', async () => {
     const onSend = vi.fn();
     render(<ChatView {...defaultProps} onSend={onSend} />);
     const user = userEvent.setup();
@@ -83,6 +90,6 @@ describe('ChatView', () => {
     await user.type(textarea, 'Hello');
     await user.keyboard('{Enter}');
 
-    expect(onSend).toHaveBeenCalledWith('Hello', expect.objectContaining({ model: expect.any(String), thinkingMode: expect.any(String) }));
+    expect(onSend).toHaveBeenCalledWith('Hello', expect.objectContaining({ model: 'openrouter', thinkingMode: expect.any(String) }));
   });
 });

@@ -243,7 +243,7 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
 export default function ChatView({ agent, messages, streamingText, streamingReasoning, sending, isReasoning, onSend }: Props) {
 
   const [input, setInput] = useState('');
-  const [model, setModel] = useState('gemini-flash');
+  const [model, setModel] = useState('openrouter');
   const [thinkingMode, setThinkingMode] = useState('medium');
   
   const bottomRef = useRef<HTMLDivElement>(null);

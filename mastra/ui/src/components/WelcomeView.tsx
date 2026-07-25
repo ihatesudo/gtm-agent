@@ -17,7 +17,7 @@ const QUICK_PILLS = [
 
 export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
   const [input, setInput] = useState('');
-  const [model, setModel] = useState('gemini-flash');
+  const [model, setModel] = useState('openrouter');
   const [thinkingMode, setThinkingMode] = useState('medium');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 

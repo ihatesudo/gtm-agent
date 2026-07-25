@@ -83,15 +83,16 @@ describe('resolveModelForChoice (UI dropdown routing)', () => {
     expect(resolveModelForChoice(undefined, {})).toBeNull();
   });
 
-  it('builds a GLM (Zhipu) provider instance for "glm"', () => {
-    const model = resolveModelForChoice('glm', { ZHIPU_API_KEY: 'test-key' });
-    // A LanguageModel instance is returned — assert it is constructed, not null.
-    expect(model).toBeTruthy();
-  });
-
-  it('builds an OpenRouter provider instance for "openrouter"', () => {
+  it('builds an OpenRouter chat-completions model for "openrouter"', () => {
     const model = resolveModelForChoice('openrouter', { OPENROUTER_API_KEY: 'or-key' });
     expect(model).toBeTruthy();
+    expect(model?.provider).toBe('openai.chat');
+  });
+
+  it('builds a GLM (Zhipu) chat-completions model for "glm"', () => {
+    const model = resolveModelForChoice('glm', { ZHIPU_API_KEY: 'test-key' });
+    expect(model).toBeTruthy();
+    expect(model?.provider).toBe('openai.chat');
   });
 
   it('builds a Vertex provider for "gemini-flash" when a SA is configured', () => {
