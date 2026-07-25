@@ -19,7 +19,9 @@ const deployer = new CloudflareDeployer({
   compatibility_date: '2026-07-24',
   compatibility_flags: ['nodejs_compat'],
   assets: {
-    directory: '.mastra/output/studio',
+    // Wrangler resolves asset paths from the generated config directory
+    // (`.mastra/output`), so the bundled UI is simply its `studio` sibling.
+    directory: 'studio',
     not_found_handling: 'single-page-application',
   },
   r2_buckets: [{

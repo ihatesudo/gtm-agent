@@ -7,7 +7,7 @@ ENV_LOAD := set -a && { [ -f .env ] && . ./.env; }; set +a
 
 .PHONY: help setup auth env run agent ask role skill menu roles skills clean \
         web-dev web-deploy web-secrets \
-        mastra-dev mastra-test mastra-prd mastra-run mastra-deploy mastra-deploy-dry-run
+        mastra-dev mastra-test mastra-smoke-live mastra-db-bootstrap mastra-prd mastra-run mastra-deploy mastra-deploy-dry-run
 
 help: ## Show this help
 	@echo "Usage: make <target>"
@@ -24,7 +24,8 @@ help: ## Show this help
 	@echo ""
 	@echo "Mastra orchestration engine:"
 	@echo "  mastra-dev     Dev mode — full Studio UI, hot reload     → :4111"
-	@echo "  mastra-test    Test mode — custom chat UI, production-like → :4111"
+	@echo "  mastra-test    Test mode — custom chat UI in the local Worker runtime → :4111"
+	@echo "  mastra-db-bootstrap  Verify Turso and create GTM application tables"
 	@echo "  mastra-ui-build  Build custom chat UI for test/prod mode"
 	@echo "  mastra-prd     Build for Cloudflare Workers deployment"
 	@echo "  mastra-secrets Upload secrets to Cloudflare Workers (GEMINI_API_KEY, TURSO_*)"
@@ -59,11 +60,11 @@ run agent: ## Interactive REPL (Python CLI)
 
 MASTRA = cd mastra
 
-mastra-dev: ## Dev mode — full Studio UI with hot reload (port 4111)
-	@$(MASTRA) && npm run dev
+mastra-dev: ## Dev mode — full Studio UI with root .env loaded (port 4111)
+	@$(ENV_LOAD); $(MASTRA) && npm run dev
 
-mastra-test: ## Test mode — custom chat UI, production-like (port 4111)
-	@$(MASTRA) && npm run test
+mastra-test: ## Start production-like custom UI with root .env loaded (port 4111)
+	@$(ENV_LOAD); $(MASTRA) && npm run test
 
 mastra-ui-build: ## Build custom chat UI for test/prod mode
 	@$(MASTRA) && npm run ui:build
@@ -84,8 +85,11 @@ mastra-run: ## One-shot campaign via Mastra CLI
 mastra-smoke: ## Run SSE smoke tests (no server needed)
 	@$(MASTRA) && npm run test:smoke
 
-mastra-smoke-live: ## Run live smoke tests (server must be running on :4111)
-	@$(MASTRA) && npm run test:smoke:live
+mastra-smoke-live: ## Run live smoke tests against the local server on :4111
+	@$(ENV_LOAD); $(MASTRA) && npm run test:smoke:live
+
+mastra-db-bootstrap: ## Verify remote Turso connectivity and provision GTM tables
+	@$(ENV_LOAD); $(MASTRA) && npm run db:bootstrap
 
 mastra-secrets: ## Upload Cloudflare Workers secrets for the Mastra deployment
 	@echo "Uploading secrets for gtm-agent-mastra worker..."

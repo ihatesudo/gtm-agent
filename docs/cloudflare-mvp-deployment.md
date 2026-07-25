@@ -13,7 +13,11 @@ This is the smallest production-shaped deployment for a marketing teammate. It s
    npx wrangler r2 bucket create gtm-agent-assets-preview
    ```
 4. Create a Turso database and copy its URL and auth token.
-5. Upload secrets from the terminal (they are never placed in `wrangler.json`):
+5. Provision the application schema (safe to run repeatedly):
+   ```sh
+   make mastra-db-bootstrap
+   ```
+6. Upload secrets from the terminal (they are never placed in `wrangler.json`):
    ```sh
    make mastra-secrets
    ```
