@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
-import type { Agent, Message } from '../types';
+import type { Agent, Message, ToolCall } from '../types';
 import { ProviderWarning } from './ProviderWarning';
 import Icon from './Icon';
 
@@ -8,6 +8,7 @@ interface Props {
   messages: Message[];
   streamingText: string;
   streamingReasoning?: string;
+  streamingToolCalls?: ToolCall[];
   sending: boolean;
   isReasoning: boolean;
   onSend: (content: string, options?: { model?: string, thinkingMode?: string }) => void;
@@ -67,6 +68,104 @@ function ReasoningAccordion({ text }: { text: string }) {
           fontFamily: 'var(--font-mono)',
         }}>
           {text}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  web_search: 'Search',
+  save_asset: 'Save Asset',
+  read_asset: 'Read Asset',
+  list_assets: 'List Assets',
+  list_skills: 'List Skills',
+  read_skill_reference: 'Read Skill',
+  get_project_context: 'Project Context',
+  update_project_context: 'Update Project',
+  record_project_campaign: 'Record Campaign',
+  record_project_decision: 'Record Decision',
+};
+
+function ToolCallCard({ call }: { call: ToolCall }) {
+  const [open, setOpen] = useState(false);
+  const label = TOOL_LABELS[call.tool] || call.tool;
+
+  let inputSummary = '';
+  try {
+    const parsed = JSON.parse(call.input);
+    const values = Object.values(parsed).filter(v => typeof v === 'string');
+    inputSummary = values.slice(0, 2).join(' · ');
+  } catch {
+    inputSummary = call.input.slice(0, 80);
+  }
+
+  return (
+    <div style={{
+      marginBottom: 8,
+      borderRadius: 'var(--radius-sm)',
+      overflow: 'hidden',
+      border: '1px solid #C4B5FD',
+      background: '#F5F3FF',
+      boxShadow: 'var(--shadow-sm)',
+    }}>
+      <button onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          width: '100%',
+          padding: '6px 12px',
+          border: 'none',
+          background: 'transparent',
+          cursor: 'pointer',
+          fontSize: 12.5,
+          color: '#5B21B6',
+          fontWeight: 600,
+          fontFamily: 'inherit',
+          textAlign: 'left',
+        }}
+      >
+        <span style={{
+          transform: open ? 'rotate(90deg)' : 'none',
+          transition: 'transform 0.15s ease',
+          fontSize: 10,
+          display: 'inline-block',
+        }}>▶</span>
+        <Icon name="tool" size={14} style={{ color: '#7C3AED' }} />
+        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {open ? label : `${label} · ${inputSummary || 'running…'}${inputSummary.length > 50 ? '…' : ''}`}
+        </span>
+        <span style={{
+          fontSize: 10,
+          padding: '1px 6px',
+          borderRadius: 8,
+          background: call.status === 'success' ? '#D1FAE5' : call.status === 'error' ? '#FEE2E2' : '#FEF3C7',
+          color: call.status === 'success' ? '#065F46' : call.status === 'error' ? '#991B1B' : '#92400E',
+        }}>
+          {call.status === 'success' ? 'done' : call.status === 'error' ? 'error' : '…'}
+        </span>
+      </button>
+      {open && (
+        <div style={{
+          padding: '8px 12px',
+          fontSize: 12,
+          lineHeight: 1.5,
+          color: '#4C1D95',
+          borderTop: '1px solid #C4B5FD',
+          background: 'rgba(255, 255, 255, 0.6)',
+          fontFamily: 'var(--font-mono)',
+        }}>
+          {call.output ? (
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 11, color: '#6D28D9' }}>Output</div>
+              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 200, overflowY: 'auto' }}>
+                {call.output}
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontStyle: 'italic', color: '#7C3AED' }}>Waiting for result…</div>
+          )}
         </div>
       )}
     </div>
@@ -240,7 +339,7 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
   );
 }
 
-export default function ChatView({ agent, messages, streamingText, streamingReasoning, sending, isReasoning, onSend }: Props) {
+export default function ChatView({ agent, messages, streamingText, streamingReasoning, streamingToolCalls = [], sending, isReasoning, onSend }: Props) {
 
   const [input, setInput] = useState('');
   const [model, setModel] = useState('openrouter');
@@ -345,6 +444,13 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
                   {!isUser && msg.reasoning && (
                     <ReasoningAccordion text={msg.reasoning} />
                   )}
+                  {!isUser && msg.toolCalls && msg.toolCalls.length > 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      {msg.toolCalls.map(tc => (
+                        <ToolCallCard key={tc.id} call={tc} />
+                      ))}
+                    </div>
+                  )}
                   <div style={{
                     background: isUser ? 'var(--accent-gradient)' : 'var(--surface)',
                     border: isUser ? 'none' : '1px solid var(--border)',
@@ -409,8 +515,8 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
             </div>
           )}
 
-          {/* Streaming Text & Reasoning */}
-          {(streamingText || streamingReasoning) && (
+          {/* Streaming Text, Reasoning & Tool Calls */}
+          {(streamingText || streamingReasoning || streamingToolCalls.length > 0) && (
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
               <div style={{
                 width: 30,
@@ -431,6 +537,13 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
               <div style={{ maxWidth: '85%' }}>
                 {streamingReasoning && (
                   <ReasoningAccordion text={streamingReasoning} />
+                )}
+                {streamingToolCalls.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    {streamingToolCalls.map(tc => (
+                      <ToolCallCard key={tc.id} call={tc} />
+                    ))}
+                  </div>
                 )}
                 {streamingText && (
                   <div style={{

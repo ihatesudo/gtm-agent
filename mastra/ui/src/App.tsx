@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Agent, Message } from './types';
+import type { Agent, Message, ToolCall } from './types';
 import { fetchAgents, sendMessageStream } from './lib/api';
 import Sidebar from './components/Sidebar';
 import { WelcomeView } from './components/WelcomeView';
@@ -66,6 +66,7 @@ export default function App() {
   const [streamingText, setStreamingText] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const [isReasoning, setIsReasoning] = useState(false);
+  const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCall[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [threads, setThreads] = useState<ThreadMeta[]>(loadThreads);
 
@@ -96,7 +97,8 @@ export default function App() {
     setMessages([]);
     setStreamingText('');
     setStreamingReasoning('');
-    setIsReasoning(false);
+      setIsReasoning(false);
+      setStreamingToolCalls([]);
     setThreadId(null);
   }, []);
 
@@ -112,6 +114,7 @@ export default function App() {
       setStreamingText('');
       setStreamingReasoning('');
       setIsReasoning(false);
+      setStreamingToolCalls([]);
     }
   }, [threads]);
 
@@ -120,6 +123,7 @@ export default function App() {
       if (!selectedAgentId || sending) return;
       setSending(true);
       setIsReasoning(false);
+      setStreamingToolCalls([]);
 
       const activeThreadId = threadId || ('t-' + Date.now());
       const userMsg: Message = { id: 't-' + Date.now(), role: 'user', content, createdAt: new Date().toISOString() };
@@ -130,19 +134,29 @@ export default function App() {
           ...options,
           onText: (text) => { setIsReasoning(false); setStreamingText(text); },
           onReasoning: (reasoning) => { setIsReasoning(true); setStreamingReasoning(reasoning); },
+          onToolCall: (call) => {
+            setStreamingToolCalls(prev => [
+              ...prev,
+              { id: 'tc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ...call, status: 'success' as const },
+            ]);
+          },
           onFinish: (fullText, reasoning, streamThreadId) => {
-            const assistantMsg: Message = {
-              id: 'a-' + Date.now(),
-              role: 'assistant',
-              content: fullText,
-              reasoning,
-              createdAt: new Date().toISOString(),
-            };
-            const targetTid = streamThreadId || activeThreadId;
-            setMessages(prev => {
-              const updated = [...prev, assistantMsg];
-              saveThreadMessages(targetTid, updated);
-              return updated;
+            setStreamingToolCalls(prev => {
+              const assistantMsg: Message = {
+                id: 'a-' + Date.now(),
+                role: 'assistant',
+                content: fullText,
+                reasoning,
+                toolCalls: prev.length > 0 ? [...prev] : undefined,
+                createdAt: new Date().toISOString(),
+              };
+              const targetTid = streamThreadId || activeThreadId;
+              setMessages(msgs => {
+                const updated = [...msgs, assistantMsg];
+                saveThreadMessages(targetTid, updated);
+                return updated;
+              });
+              return [];
             });
             setStreamingText('');
             setStreamingReasoning('');
@@ -218,6 +232,7 @@ export default function App() {
           messages={messages}
           streamingText={streamingText}
           streamingReasoning={streamingReasoning}
+          streamingToolCalls={streamingToolCalls}
           sending={sending}
           isReasoning={isReasoning}
           onSend={handleSend}
