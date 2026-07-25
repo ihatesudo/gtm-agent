@@ -1,5 +1,4 @@
-import { GoogleAuth } from 'google-auth-library';
-import { resolveGoogleCredentials } from './model.js';
+import { resolveVertexCredentials } from './model.js';
 
 export type ProviderName = 'openrouter' | 'google' | 'vertex';
 
@@ -67,25 +66,27 @@ async function checkGoogle(key?: string): Promise<ProviderState> {
   }
 }
 
-async function checkVertex(env: Env): Promise<ProviderState> {
-  const hasCreds = !!env.GOOGLE_APPLICATION_CREDENTIALS;
-  const project = env.GOOGLE_CLOUD_PROJECT;
-  if (!hasCreds) return { configured: false, reachable: false };
-  if (!project) return { configured: true, reachable: false, error: 'GOOGLE_CLOUD_PROJECT missing' };
-  try {
-    // Exchanging a service-account JWT for an access token proves auth works
-    // and never triggers a billable inference call.
-    const auth = new GoogleAuth({
-      scopes: 'https://www.googleapis.com/auth/cloud-platform',
-      ...resolveGoogleCredentials(env),
-    });
-    const client = await auth.getClient();
-    const token = await client.getAccessToken();
-    if (token?.token) return { configured: true, reachable: true };
-    return { configured: true, reachable: false, error: 'no access token returned' };
-  } catch (e) {
-    return { configured: true, reachable: false, error: errMsg(e) };
+function checkVertex(env: Env): ProviderState {
+  const expressKey = env.GOOGLE_VERTEX_API_KEY; // Express mode (API key, no SA)
+  const creds = resolveVertexCredentials(env); // SA JSON or split fields
+  const project = env.GOOGLE_CLOUD_PROJECT || env.GOOGLE_VERTEX_PROJECT;
+
+  if (!expressKey && !creds) return { configured: false, reachable: false };
+  // SA mode needs a project; Express mode (API key) does not.
+  if (!expressKey && !project) {
+    return { configured: true, reachable: false, error: 'GOOGLE_CLOUD_PROJECT missing' };
   }
+  // We intentionally do NOT run an independent token exchange here: the /edge
+  // provider signs the SA JWT with WebCrypto, and duplicating that signing in
+  // the health check isn't worth it. Treat credentials-present as optimistically
+  // reachable; the first real generation request surfaces any auth failure via
+  // the UI onError path.
+  return { configured: true, reachable: true };
+}
+
+/** Vertex is configured if either Express key or SA fields are present. */
+function vertexConfigured(env: Env): boolean {
+  return !!(env.GOOGLE_VERTEX_API_KEY || resolveVertexCredentials(env));
 }
 
 function errMsg(e: unknown): string {
@@ -107,7 +108,7 @@ export async function runConnectivityCheck(envSource: Record<string, unknown> = 
 
   const openrouter = active === 'openrouter' ? await checkOpenRouter(openrouterKey) : { configured: !!openrouterKey, reachable: false };
   const google = active === 'google' ? await checkGoogle(googleKey) : { configured: !!googleKey, reachable: false };
-  const vertex = active === 'vertex' ? await checkVertex(env) : { configured: !!env.GOOGLE_APPLICATION_CREDENTIALS, reachable: false };
+  const vertex = active === 'vertex' ? checkVertex(env) : { configured: vertexConfigured(env), reachable: false };
 
   return { active, providers: { openrouter, google, vertex }, checkedAt: Date.now() };
 }

@@ -40,3 +40,22 @@ rtk pip list            rtk pnpm install        rtk npm run <script>
 - For debugging, use raw command without rtk prefix
 - `rtk proxy <cmd>` runs command without filtering but tracks usage
 <!-- /headroom:rtk-instructions -->
+
+# Critical Rules
+
+## Never modify generated / vendored files — READ ONLY
+
+**Never edit, create, or delete files inside `dist/`, `build/`, `.mastra/output/`,
+or any `node_modules/` path (including `node_modules/<pkg>/dist/`).** These are
+build artifacts or third-party dependencies. Editing them:
+
+- is silently overwritten on the next `install` / `build`
+- has no effect on the shipped product
+- pollutes the working tree and breaks reproducibility
+
+Treat them as **read-only evidence**. It's fine to `grep` / `cat` / `sed -n` them
+to understand how a library behaves internally (e.g. tracing Mastra's
+`resolveModelConfig`), but the fix always belongs in *our* source — never in the
+dependency's `dist/`. If a bug appears to live in `node_modules`, work around it
+in the project's own code or open an upstream issue.
+

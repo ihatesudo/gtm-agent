@@ -1,5 +1,10 @@
 import { createGoogle } from '@ai-sdk/google';
-import { createGoogleVertex } from '@ai-sdk/google-vertex';
+// IMPORTANT: use the /edge subpath. The main entry routes service-account auth
+// through `google-auth-library`, which signs the JWT with Node's
+// `crypto.createSign` — unavailable in the Cloudflare Workers V8 isolate
+// (workerd#3172). The /edge build signs with WebCrypto (`crypto.subtle`),
+// which works in both Node 18+ and Workers.
+import { createGoogleVertex } from '@ai-sdk/google-vertex/edge';
 import { createOpenAI } from '@ai-sdk/openai';
 
 export type AgentRole = 'director' | 'specialist';
@@ -14,19 +19,47 @@ function resolveModelId(role: AgentRole, defaultModel: string, env: NodeJS.Proce
   return (env.SPECIALIST_MODEL as string) || defaultModel;
 }
 
+export interface VertexCredentials {
+  clientEmail: string;
+  privateKey: string;
+  privateKeyId?: string;
+}
+
+/** Shell-sourced .env leaves literal "\n" in the PEM; normalize to real newlines. */
+function normalizePrivateKey(key: string): string {
+  return key.replace(/\\n/g, '\n');
+}
+
 /**
- * Parse inline JSON service-account credentials from GOOGLE_APPLICATION_CREDENTIALS.
- * A bare file path is returned as undefined so the SDK falls back to ADC in Node
- * (file reads aren't possible inside a Cloudflare Worker).
+ * Resolve Vertex service-account fields from env. Accepts two shapes for
+ * backward compatibility (no .env rewrite required):
+ *   1. Whole SA JSON in GOOGLE_APPLICATION_CREDENTIALS (project convention)
+ *   2. Separate fields GOOGLE_CLIENT_EMAIL / GOOGLE_PRIVATE_KEY / GOOGLE_PRIVATE_KEY_ID
+ * Returns null when neither shape yields both required fields.
  */
-export function resolveGoogleCredentials(env: Record<string, string | undefined> = process.env) {
+export function resolveVertexCredentials(env: Record<string, string | undefined> = process.env): VertexCredentials | null {
   const raw = (env.GOOGLE_APPLICATION_CREDENTIALS || '').trim();
-  if (!raw || !raw.startsWith('{')) return undefined;
-  try {
-    return { credentials: JSON.parse(raw) };
-  } catch {
-    return undefined;
+  let clientEmail: string | undefined;
+  let privateKey: string | undefined;
+  let privateKeyId: string | undefined;
+
+  if (raw.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(raw);
+      clientEmail = parsed.client_email;
+      privateKey = parsed.private_key;
+      privateKeyId = parsed.private_key_id;
+    } catch {
+      // fall through to the separate-field form
+    }
   }
+
+  clientEmail = clientEmail || env.GOOGLE_CLIENT_EMAIL;
+  privateKey = privateKey || env.GOOGLE_PRIVATE_KEY;
+  privateKeyId = privateKeyId || env.GOOGLE_PRIVATE_KEY_ID;
+
+  if (!clientEmail || !privateKey) return null;
+  return { clientEmail, privateKey: normalizePrivateKey(privateKey), privateKeyId };
 }
 
 /**
@@ -52,12 +85,13 @@ export function getAgentModel(role: AgentRole, defaultModel: string) {
     return openrouter(modelId);
   }
 
-  // 2. Vertex AI Provider (GCP Trial Credits via Service Account / ADC)
+  // 2. Vertex AI Provider (GCP Trial Credits via Service Account / Express mode)
   if (provider === 'vertex' || env.GOOGLE_GENAI_USE_VERTEXAI === 'true') {
+    const apiKey = env.GOOGLE_VERTEX_API_KEY; // Express mode (simplest, no SA)
     const vertex = createGoogleVertex({
-      project: env.GOOGLE_CLOUD_PROJECT || 'project-babe4c82-37e1-4f22-ac0',
-      location: env.GOOGLE_CLOUD_LOCATION || 'us-central1',
-      googleAuthOptions: resolveGoogleCredentials(env),
+      project: env.GOOGLE_CLOUD_PROJECT || env.GOOGLE_VERTEX_PROJECT || 'project-babe4c82-37e1-4f22-ac0',
+      location: env.GOOGLE_CLOUD_LOCATION || env.GOOGLE_VERTEX_LOCATION || 'us-central1',
+      ...(apiKey ? { apiKey } : { googleCredentials: resolveVertexCredentials(env) || undefined }),
     });
     const modelId = customModel.replace(/^(google\/|vertex\/)/, '');
     return vertex(modelId);
