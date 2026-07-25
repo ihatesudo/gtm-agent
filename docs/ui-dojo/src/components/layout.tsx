@@ -1,0 +1,677 @@
+import type { ComponentType } from "react";
+import { useLocation, useNavigate } from "react-router";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Sparkles, Bot, Info, Minus, Plus } from "lucide-react";
+import { SiGithub } from "@icons-pack/react-simple-icons";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { DialogDescription } from "@radix-ui/react-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "./ui/collapsible";
+import { cn, newThreadLink } from "@/lib/utils";
+
+type SidebarItemEntry = {
+  id: string;
+  title: string;
+  url: `/${string}`;
+  description: string;
+  explanation: string;
+  docsUrl?: string;
+  concept?: string; // Items without concept appear at the root level
+  // Optional full title for the page header when the menu `title` is abbreviated
+  // (e.g. menu "Obs. Memory" but page "Observational Memory").
+  pageTitle?: string;
+};
+
+type SidebarEntry = {
+  id: string;
+  title: string;
+  icon: ComponentType<{ className?: string }>;
+  items: SidebarItemEntry[];
+};
+
+type GroupedItems = {
+  rootItems: SidebarItemEntry[];
+  conceptGroups: Record<string, SidebarItemEntry[]>;
+};
+
+function MastraLogo({ className }: { className?: string }) {
+  return <img alt="" className={cn("size-4", className)} src="/mastra.svg" />;
+}
+
+function CopilotKitLogo({ className }: { className?: string }) {
+  return (
+    <img alt="" className={cn("size-4", className)} src="/copilotkit.svg" />
+  );
+}
+
+const SIDEBAR: SidebarEntry[] = [
+  {
+    id: "ai-sdk",
+    title: "AI SDK",
+    icon: Sparkles,
+    items: [
+      {
+        id: "ai-sdk-chat",
+        title: "Chat",
+        url: "/",
+        description: "How to use AI SDK + AI Elements with Mastra",
+        explanation:
+          'This example demonstrates how to use "@mastra/ai-sdk" chatRoute() function to create an AI SDK-compatible stream that can be used with AI SDK useChat() hook.',
+        docsUrl: "https://mastra.ai/docs/frameworks/agentic-uis/ai-sdk",
+      },
+      {
+        id: "sub-agents-and-workflows-custom-events",
+        title: "Sub Agents & Workflows",
+        url: "/ai-sdk/sub-agents-and-workflows-custom-events",
+        description: "Using custom events with subagents & workflows",
+        explanation:
+          "Shows how writer.write() in workflow steps emits custom events during agent delegation. The orderProcessingAgent coordinates inventoryCheckAgent and orderFulfillmentWorkflow, with each emitting stage-specific data-tool-progress events for granular progress tracking across the entire execution chain.",
+        docsUrl:
+          "https://mastra.ai/docs/frameworks/agentic-uis/ai-sdk#custom-tool-streaming",
+      },
+      {
+        id: "client-ai-sdk",
+        title: "Client Tools",
+        url: "/ai-sdk/client-tools",
+        description: "Calling frontend tools with AI SDK",
+        explanation:
+          "Demonstrates client-side tool execution using AI SDK's onToolCall callback. When the bgColorAgent calls colorChangeTool, the callback intercepts it on the client and executes the DOM manipulation directly in the browser instead of on the server.",
+      },
+      {
+        id: "workflow",
+        title: "Basic",
+        url: "/ai-sdk/workflow",
+        description: "Building multi-step workflows with AI SDK",
+        explanation:
+          "Demonstrates Mastra workflows with AI SDK by using prepareSendMessagesRequest() to transform user input into workflow inputData. The activitiesWorkflow returns step-by-step results via data-workflow parts, which can be rendered with custom UI components showing each step's status.",
+        concept: "Workflow",
+      },
+      {
+        id: "workflow-agent-text-stream",
+        title: "Streaming",
+        url: "/ai-sdk/workflow-agent-text-stream",
+        description: "Streaming text from an agent in a workflow",
+        explanation:
+          "Shows how to stream text from an agent in a workflow step, using the includeTextStreamParts option in the workflowRoute() function and piping the agent's stream to the workflow step writer to enable text chunk streaming",
+        docsUrl:
+          "https://mastra.ai/docs/frameworks/agentic-uis/ai-sdk#workflowroute",
+        concept: "Workflow",
+      },
+      {
+        id: "workflow-suspend-resume",
+        title: "Suspend/Resume",
+        url: "/ai-sdk/workflow-suspend-resume",
+        description: "Using suspend and resume in a workflow",
+        explanation:
+          "Shows Mastra's workflow suspend/resume pattern using suspend() and resumeSchema. The approvalWorkflow pauses at the request-approval step, returns suspendPayload to the client, then resumes when called with matching resumeData or bails if rejected, enabling human-in-the-loop approval flows.",
+        concept: "Workflow",
+      },
+      {
+        id: "workflow-custom-events",
+        title: "Branching",
+        url: "/ai-sdk/workflow-custom-events",
+        description: "Custom events from workflow steps with branching",
+        explanation:
+          "Demonstrates custom events from workflow steps with conditional branching using .branch(). The branchingWorkflow validates an order, then branches to either standardWorkflow or expressWorkflow based on order type. Each nested workflow step emits data-tool-progress events using writer.custom() showing how custom events propagate from branched nested workflows to the root stream.",
+        docsUrl:
+          "https://mastra.ai/docs/frameworks/agentic-uis/ai-sdk#custom-tool-streaming",
+        concept: "Workflow",
+      },
+      {
+        id: "generative-user-interfaces",
+        title: "Generative",
+        url: "/ai-sdk/generative-user-interfaces",
+        description: "Building custom UIs for tool responses",
+        explanation:
+          "This example shows how AI SDK's tool UI parts work with Mastra tools. The weatherTool returns structured data that AI SDK automatically types as tool-weatherTool, allowing you to render custom React components based on tool state (input-available, output-available, output-error).",
+        docsUrl:
+          "https://mastra.ai/docs/frameworks/agentic-uis/ai-sdk#custom-ui",
+        concept: "UI",
+      },
+      {
+        id: "generative-user-interfaces-with-custom-events",
+        title: "Tool Events",
+        url: "/ai-sdk/generative-user-interfaces-with-custom-events",
+        description: "Using custom events with generative UIs",
+        explanation:
+          "Demonstrates custom streaming events using writer.custom() in Mastra tools. The taskTool emits data-tool-progress events during execution, which AI SDK surfaces as custom data parts in the message stream for building real-time progress UIs.",
+        docsUrl:
+          "https://mastra.ai/docs/frameworks/agentic-uis/ai-sdk#custom-tool-streaming",
+        concept: "UI",
+      },
+      {
+        id: "tool-nested-streams",
+        title: "Nested Streams",
+        url: "/ai-sdk/tool-nested-streams",
+        description:
+          "Nested agent & workflow streams emitted from within a tool run",
+        explanation:
+          "Demonstrates a tool that calls another Mastra agent and pipes its stream into the tool writer, emitting nested data-tool-agent and data-tool-workflow parts that can be rendered alongside the parent tool run in a single AI SDK UI.",
+        docsUrl:
+          "https://mastra.ai/docs/streaming/tool-streaming#tool-using-an-agent",
+        concept: "UI",
+      },
+      {
+        id: "tool-approval",
+        title: "Tool Approval",
+        url: "/ai-sdk/tool-approval",
+        description: "Human-in-the-loop tool approval using requireApproval",
+        explanation:
+          "Demonstrates Mastra's requireApproval tool option with AI SDK. When the agent calls a tool marked with requireApproval: true, the stream emits a data-tool-call-approval part instead of executing immediately. The UI renders approve/decline buttons, and sends resumeData with the runId to continue or skip execution.",
+        docsUrl: "https://mastra.ai/docs/agents/agent-approval",
+        concept: "UI",
+      },
+      {
+        id: "ai-sdk-json-render",
+        title: "JSON Render",
+        url: "/ai-sdk/json-render",
+        description: "Use json-render's streaming hook with a Mastra route.",
+        explanation:
+          "Uses json-render's useUIStream() hook to POST prompts to a custom Mastra route that streams JSONL patches. The page compiles those patches into a spec and renders them with @json-render/react.",
+        docsUrl: "https://json-render.dev/docs/ai-sdk",
+        concept: "UI",
+      },
+      {
+        id: "agent-network",
+        title: "Basic",
+        url: "/ai-sdk/network",
+        description:
+          "Coordinating multiple AI agents with full lifecycle visibility",
+        explanation:
+          "Shows Mastra's agent composition pattern where a routing agent coordinates multiple specialized agents and workflows. The data-network events display each delegated agent's execution as steps, showing their status, input, and output - providing transparency into which agents were called and what they did.",
+        concept: "Network",
+      },
+      {
+        id: "agent-network-custom-events",
+        title: "Events",
+        url: "/ai-sdk/agent-network-custom-events",
+        description: "Using custom events in an agent network",
+        explanation:
+          "Combines agent networks with custom events by having multiple agents emit progress updates. The reportAgentNetwork delegates sequentially to reportGenerationAgent and reportReviewAgent, with each agent's tools using writer.custom() to stream stage-specific progress events.",
+        docsUrl:
+          "https://mastra.ai/docs/frameworks/agentic-uis/ai-sdk#custom-tool-streaming",
+        concept: "Network",
+      },
+    ],
+  },
+  {
+    id: "assistant-ui",
+    title: "Assistant UI",
+    icon: Bot,
+    items: [
+      {
+        id: "assistant-ui-chat",
+        title: "Chat",
+        url: newThreadLink("assistant-ui", "ghibliAgent"),
+        description: "How to use Assistant UI with Mastra",
+        explanation:
+          "This example demonstrates a more complex integration between Mastra and Assistant UI (a simpler example can be found in the Client Tools section). The useExternalStoreRuntime() hook allows a tight integration into Mastra and can be used for for message, memory, and thread storage.",
+        docsUrl: "https://mastra.ai/docs/frameworks/agentic-uis/assistant-ui",
+      },
+      {
+        id: "client-assistant-ui",
+        title: "Client Tools",
+        url: "/assistant-ui/client-tools",
+        description: "Calling frontend tools in Assistant UI",
+        explanation:
+          "Same client-side tool pattern using Assistant UI's onToolCall callback in useChatRuntime(). The colorChangeTool is intercepted and executed client-side, showing how to implement browser-only tools with any UI framework that exposes tool call hooks.",
+      },
+      {
+        id: "assistant-ui-human-in-the-loop",
+        title: "Human-in-the-Loop",
+        url: "/assistant-ui/human-in-the-loop",
+        description: "Involving humans in the AI decision-making process",
+        explanation:
+          "A simpler human-in-the-loop example using Assistant UI. For a bigger example, visit https://github.com/assistant-ui/mastra-hitl",
+      },
+    ],
+  },
+  {
+    id: "copilot-kit",
+    title: "CopilotKit",
+    icon: CopilotKitLogo,
+    items: [
+      {
+        id: "copilot-kit-chat",
+        title: "Basic",
+        url: "/copilot-kit",
+        concept: "Chat",
+        description: "How to use CopilotKit with Mastra",
+        explanation:
+          'By using the "@ag-ui/mastra" registerCopilotKit() function, a CopilotKit-compatible stream is automatically created with Mastra. This endpoint is defined as a runtimeUrl prop in the CopilotKit component.',
+        docsUrl: "https://mastra.ai/docs/frameworks/agentic-uis/copilotkit",
+      },
+      {
+        id: "copilot-kit-reasoning",
+        title: "Reasoning",
+        url: "/copilot-kit/reasoning",
+        concept: "Chat",
+        description: "See the model think before it answers",
+        explanation:
+          "Uses an OpenAI reasoning model (o4-mini); the @ag-ui/mastra bridge emits reasoning events that CopilotChat renders inline.",
+      },
+      {
+        id: "copilot-kit-multimodal",
+        title: "Multimodal",
+        url: "/copilot-kit/multimodal",
+        concept: "Chat",
+        description: "Chat with images, not just text",
+        explanation:
+          "CopilotChat with attachments enabled: upload an image and the vision-capable Mastra agent describes it.",
+      },
+      {
+        id: "generative-user-interfaces",
+        title: "Tool-based",
+        url: "/copilot-kit/generative-user-interfaces",
+        concept: "Generative UI",
+        description: "Controlled: the agent calls a typed tool, you render it",
+        explanation:
+          "Tool-based generative UI: the agent calls the typed get_weather backend tool and the frontend renders the result with CopilotKit v2 useRenderTool(). You control exactly which component appears.",
+      },
+      {
+        id: "copilot-kit-a2ui",
+        title: "A2UI",
+        url: "/copilot-kit/a2ui",
+        concept: "Generative UI",
+        description: "Declarative: the agent describes the UI from a catalog",
+        explanation:
+          "A2UI generative UI: the agent calls generate_a2ui, getA2UITools composes and validates a UI surface from the shared catalog, and CopilotKit renders it in the chat. Cards are clickable and report the selected item back to the agent.",
+      },
+      {
+        id: "copilot-kit-open-generative-ui",
+        title: "Open Gen UI",
+        url: "/copilot-kit/open-generative-ui",
+        concept: "Generative UI",
+        description: "Open: the agent renders a full interactive app",
+        explanation:
+          "Open generative UI: the agent calls show_calculator when an interactive calculator is useful, and the frontend renders the live calculator component in the chat. Tool arguments can stream in progressively before the call completes.",
+      },
+      {
+        id: "copilot-kit-mcp-apps",
+        title: "MCP Apps",
+        url: "/copilot-kit/mcp-apps",
+        concept: "Generative UI",
+        description: "Interactive apps served over MCP (Excalidraw)",
+        explanation:
+          "MCP Apps (SEP-1865): the agent connects to Excalidraw's public MCP server (via @ag-ui/mcp-apps-middleware + a BuiltInAgent) and renders its interactive ui:// canvas inline in the chat. Ask it to draw a diagram.",
+      },
+      {
+        id: "copilot-kit-tool-rendering",
+        title: "Tool Rendering",
+        url: "/copilot-kit/tool-rendering",
+        concept: "Generative UI",
+        description: "Custom + catch-all renderers for tool calls",
+        explanation:
+          "One demo showing both a custom renderer for a specific tool (get_weather) and a catch-all renderer (useDefaultRenderTool) for any other tool (get_stock_price). The suggestion pills walk both paths.",
+      },
+      {
+        id: "copilot-kit-byoc",
+        title: "JSON Render",
+        url: "/copilot-kit/byoc",
+        concept: "Generative UI",
+        description: "Bring-your-own-component via json-render",
+        explanation:
+          "Bring-your-own-component: the agent returns a declarative json-render spec via a tool, and the frontend renders it with your own component registry (@json-render/react).",
+      },
+      {
+        id: "copilot-kit-frontend-tools",
+        title: "Frontend Tools",
+        url: "/copilot-kit/frontend-tools",
+        concept: "Interactivity",
+        description: "Let the agent drive your app's UI",
+        explanation:
+          "Two useFrontendTool tools in one demo: a synchronous tool that changes the UI instantly and an asynchronous tool that awaits a simulated browser-side fetch before returning.",
+      },
+      {
+        id: "copilot-kit-human-in-the-loop",
+        title: "HITL",
+        url: "/copilot-kit/human-in-the-loop",
+        concept: "Interactivity",
+        description: "Pause for a human, then pick up where it left off",
+        explanation:
+          "Mastra's native tool suspend/resume bridged onto AG-UI. The agent's schedule_meeting tool suspend()s; the bridge emits the standard RUN_FINISHED interrupt outcome (and legacy on_interrupt); CopilotKit v2 useInterrupt renders a time picker and resolve() resumes the tool (requires CopilotKit >= 1.61.2).",
+      },
+      {
+        id: "copilot-kit-shared-state",
+        title: "Shared State",
+        url: "/copilot-kit/shared-state",
+        concept: "Interactivity",
+        description: "You and the agent edit the same data, live",
+        explanation:
+          "Bidirectional shared state via Mastra working memory. Edit the recipe in the UI (write-back) or ask the agent to change it and watch fields update live (streamed as STATE_DELTA, snapshot-first). Also sends agent-context.",
+      },
+      {
+        id: "copilot-kit-subagents",
+        title: "Subagents",
+        url: "/copilot-kit/subagents",
+        concept: "Agents",
+        description: "One agent hands work to specialists",
+        explanation:
+          "A Mastra supervisor delegates to research + writer sub-agents via tools, so each hand-off renders as its own agent card in the chat.",
+      },
+      {
+        id: "copilot-kit-background-tasks",
+        title: "Background",
+        url: "/copilot-kit/background-tasks",
+        concept: "Agents",
+        description: "Kick off long jobs without blocking the chat",
+        explanation:
+          "A background-eligible tool (run_deep_research) is dispatched out of the agentic loop; the @ag-ui/mastra bridge surfaces its lifecycle as AG-UI activity events (renderActivityMessages). With untilIdle the run stays open until the task completes and the result streams back, so the card advances to Completed.",
+      },
+      {
+        id: "copilot-kit-observational-memory",
+        title: "Obs. Memory",
+        pageTitle: "Observational Memory",
+        url: "/copilot-kit/observational-memory",
+        concept: "Agents",
+        description: "Watch the agent build long-term memory",
+        explanation:
+          "Mastra Observational Memory runs Observer/Reflector work in the background; the bridge surfaces it as activity events (opt-in via a dedicated route). It triggers on unobserved message size, so send the long suggested messages.",
+      },
+    ],
+  },
+  {
+    id: "mastra-client-sdk",
+    title: "Mastra Client SDK",
+    icon: MastraLogo,
+    items: [
+      {
+        id: "mastra-client-sdk-chat",
+        title: "Chat",
+        url: "/mastra-client-sdk/chat",
+        description: "Simple chat with MastraClient and agent.stream().",
+        explanation:
+          "Uses client.getAgent('ghibliAgent') and agent.stream() directly in the browser. The example only keeps local chat state and appends text from processDataStream as chunks arrive.",
+        docsUrl: "https://mastra.ai/reference/client-js/agents#stream",
+      },
+      {
+        id: "mastra-client-sdk-json-render",
+        title: "JSON Render",
+        url: "/mastra-client-sdk/json-render",
+        description:
+          "Generate a json-render spec with Mastra structured output.",
+        explanation:
+          "Uses client.getAgent('json-render-agent') and agent.generate() with structuredOutput to return a validated json-render spec. The browser then renders that spec with @json-render/react.",
+        docsUrl: "https://mastra.ai/docs/agents/structured-output",
+      },
+      // Temporarily hide the Responses API example from the sidebar.
+      // {
+      //   id: "mastra-client-sdk-responses-api",
+      //   title: "Responses API Chat",
+      //   url: "/mastra-client-sdk/responses-api",
+      //   description:
+      //     "Simple OpenAI Responses API-style chat using previous_response_id.",
+      //   explanation:
+      //     "Uses client.responses.stream() with store: true. After each completed turn, the example saves response.id and sends it back as previous_response_id on the next turn to continue the same response chain.",
+      //   docsUrl: "https://mastra.ai/reference/client-js/responses",
+      // },
+    ],
+  },
+];
+
+function groupByConcept(items: SidebarItemEntry[]): GroupedItems {
+  const rootItems: SidebarItemEntry[] = [];
+  const conceptGroups: Record<string, SidebarItemEntry[]> = {};
+
+  for (const item of items) {
+    if (item.concept) {
+      if (!conceptGroups[item.concept]) {
+        conceptGroups[item.concept] = [];
+      }
+      conceptGroups[item.concept].push(item);
+    } else {
+      rootItems.push(item);
+    }
+  }
+
+  return { rootItems, conceptGroups };
+}
+
+function SidebarItem({
+  item,
+  isActive,
+  onNavigate,
+}: {
+  item: SidebarItemEntry;
+  isActive: boolean;
+  onNavigate: (url: string) => void;
+}) {
+  return (
+    <SidebarMenuSubItem>
+      <SidebarMenuSubButton
+        onClick={() => onNavigate(item.url)}
+        isActive={isActive}
+        className="h-auto min-h-7 items-start overflow-visible py-1.5 leading-snug hover:cursor-pointer [&>span:last-child]:overflow-visible [&>span:last-child]:whitespace-normal [&>span:last-child]:text-clip"
+      >
+        <span className="min-w-0 whitespace-normal wrap-break-word leading-snug">
+          {item.title}
+        </span>
+      </SidebarMenuSubButton>
+    </SidebarMenuSubItem>
+  );
+}
+
+function ConceptGroup({
+  concept,
+  items,
+  activeUrl,
+  onNavigate,
+}: {
+  concept: string;
+  items: SidebarItemEntry[];
+  activeUrl: string;
+  onNavigate: (url: string) => void;
+}) {
+  return (
+    <SidebarMenuSubItem>
+      <SidebarMenuSubButton className="font-medium pointer-events-none">
+        {concept}
+      </SidebarMenuSubButton>
+      <SidebarMenuSub>
+        {items.map((item) => (
+          <SidebarItem
+            key={item.id}
+            item={item}
+            isActive={item.url === activeUrl}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </SidebarMenuSub>
+    </SidebarMenuSubItem>
+  );
+}
+
+function SidebarSection({
+  sdk,
+  activeUrl,
+  onNavigate,
+}: {
+  sdk: SidebarEntry;
+  activeUrl: string;
+  onNavigate: (url: string) => void;
+}) {
+  const { rootItems, conceptGroups } = groupByConcept(sdk.items);
+
+  return (
+    <SidebarMenuSub>
+      {rootItems.map((item) => (
+        <SidebarItem
+          key={item.id}
+          item={item}
+          isActive={item.url === activeUrl}
+          onNavigate={onNavigate}
+        />
+      ))}
+      {Object.entries(conceptGroups).map(([concept, conceptItems]) => (
+        <ConceptGroup
+          key={concept}
+          concept={concept}
+          items={conceptItems}
+          activeUrl={activeUrl}
+          onNavigate={onNavigate}
+        />
+      ))}
+    </SidebarMenuSub>
+  );
+}
+
+export default function Page({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const fullUrl = location.pathname + location.search;
+
+  function findEntry(item: SidebarItemEntry): boolean {
+    return item.url === fullUrl;
+  }
+
+  const pageTitleEntry = SIDEBAR.flatMap((group) => group.items).find(
+    findEntry,
+  );
+  const pageTitleText = pageTitleEntry?.pageTitle ?? pageTitleEntry?.title;
+  const pageTitle = pageTitleEntry?.concept
+    ? `${pageTitleEntry.concept}: ${pageTitleText}`
+    : (pageTitleText ?? "Title missing");
+  const pageDescription =
+    SIDEBAR.flatMap((group) => group.items).find(findEntry)?.description ??
+    "Description missing";
+  const pageExplanation =
+    SIDEBAR.flatMap((group) => group.items).find(findEntry)?.explanation ??
+    "Explanation missing";
+  const docsUrl = SIDEBAR.flatMap((group) => group.items).find(
+    findEntry,
+  )?.docsUrl;
+
+  return (
+    <SidebarProvider>
+      <Sidebar variant="inset">
+        <SidebarHeader>
+          <div className="font-bold">UI Frameworks</div>
+          <div className="text-sm text-sidebar-foreground/70">
+            Learn how you can use Mastra with different UI frameworks.
+          </div>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarMenu>
+              {SIDEBAR.map((sdk) => (
+                <Collapsible
+                  key={sdk.id}
+                  defaultOpen={true}
+                  className="group/collapsible"
+                >
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton className="hover:cursor-pointer">
+                        <sdk.icon className="size-4 shrink-0" />
+                        <span className="min-w-0 flex-1 truncate">
+                          {sdk.title}
+                        </span>
+                        <Plus className="ml-auto size-4 shrink-0 group-data-[state=open]/collapsible:hidden" />
+                        <Minus className="ml-auto size-4 shrink-0 group-data-[state=closed]/collapsible:hidden" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    {sdk.items?.length ? (
+                      <CollapsibleContent>
+                        <SidebarSection
+                          sdk={sdk}
+                          activeUrl={fullUrl}
+                          onNavigate={navigate}
+                        />
+                      </CollapsibleContent>
+                    ) : null}
+                  </SidebarMenuItem>
+                </Collapsible>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter>
+          <Button asChild variant="outline">
+            <a href="https://github.com/mastra-ai/ui-dojo" target="_blank">
+              <SiGithub /> Source Code
+            </a>
+          </Button>
+        </SidebarFooter>
+      </Sidebar>
+      <SidebarInset>
+        <header className="flex flex-col py-4 lg:py-0 lg:flex-row h-26 lg:h-18 shrink-0 items-start lg:items-center gap-2">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-[orientation=vertical]:h-4"
+            />
+            <div className="flex flex-row gap-2 items-center">
+              <h1 className="font-bold text-xl">{pageTitle}</h1>
+              <Dialog>
+                <form>
+                  <DialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="hover:cursor-pointer"
+                    >
+                      <Info className="size-5" />
+                      <span className="sr-only">Open dialog</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{pageTitle}</DialogTitle>
+                      <DialogDescription className="sr-only">
+                        Explanation for {pageTitle}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div>
+                      <p>{pageExplanation}</p>
+                    </div>
+                    {docsUrl ? (
+                      <DialogFooter className="sm:justify-center">
+                        <Button asChild variant="link">
+                          <a href={docsUrl} target="_blank">
+                            Read documentation to learn more.
+                          </a>
+                        </Button>
+                      </DialogFooter>
+                    ) : null}
+                  </DialogContent>
+                </form>
+              </Dialog>
+            </div>
+          </div>
+          <div className="px-4 lg:px-0">{pageDescription}</div>
+        </header>
+        <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 pt-0">
+          {children}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}

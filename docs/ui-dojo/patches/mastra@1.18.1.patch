@@ -1,0 +1,26 @@
+diff --git a/dist/index.js b/dist/index.js
+index d4e9e579d999c762c9c4d2f8f61e87eacafa5856..8cbd7ef5c73ec3c3e26d52132e977bb7793141d6 100755
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -580,11 +580,21 @@ function findMastraEntryFile(mastraDir) {
+   return candidateEntries.find((f) => existsSync(f));
+ }
+ async function getResolvedVersion(packageName, specifiedVersion) {
++  const originalConsoleError = console.error;
+   try {
++    console.error = (...args) => {
++      const error = args[0];
++      if (error?.code === "ENOTDIR") {
++        return;
++      }
++      originalConsoleError(...args);
++    };
+     const packageInfo = await getPackageInfo(packageName);
+     return packageInfo?.version ?? specifiedVersion;
+   } catch {
+     return specifiedVersion;
++  } finally {
++    console.error = originalConsoleError;
+   }
+ }
+ async function getMastraPackages(rootDir) {

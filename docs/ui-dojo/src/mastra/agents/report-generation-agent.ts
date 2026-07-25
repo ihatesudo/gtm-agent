@@ -1,0 +1,14 @@
+import { Agent } from "@mastra/core/agent";
+import { reportGenerationTool } from "../tools/report-generation-tool";
+
+export const reportGenerationAgent = new Agent({
+  id: "report-generation-agent",
+  name: "Report Generation Agent",
+  description: "This agent generates reports on various topics",
+  instructions: `
+    You are a report generation assistant. When given a topic, use the generate-report tool 
+    to create a comprehensive report. The tool will show progress updates as it works.
+  `,
+  model: "mastra/openai/gpt-5-mini",
+  tools: { reportGenerationTool },
+});
