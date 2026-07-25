@@ -195,6 +195,9 @@ function parseSSE(
     let accumulated = '';
     let accumulatedReasoning = '';
     let resolved = false;
+    let seq = 0;
+    const t0 = performance.now();
+    const log = (msg: string, ...args: any[]) => console.log(`[SSE:${threadId.slice(-8)}]`, msg, ...args);
 
     const reader = res.body?.getReader();
     if (!reader) {
@@ -211,11 +214,11 @@ function parseSSE(
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        console.log('[SSE raw]', line);
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
+          seq++;
           if (data === '[DONE]') {
-            console.log('[SSE] [DONE] received');
+            log('[#%d] [DONE] (t=%dms)', seq, (performance.now() - t0).toFixed(0));
             if (!resolved) {
               resolved = true;
               callbacks?.onFinish(accumulated, accumulatedReasoning, threadId);
@@ -226,21 +229,28 @@ function parseSSE(
           try {
             const parsed = JSON.parse(data);
             const type = parsed.type || '';
+            const t = performance.now() - t0;
             if (type === 'text-delta' || type === 'text') {
               const delta = parsed.payload?.text || parsed.text || parsed.content || '';
               if (delta) {
                 accumulated += delta;
+                if (accumulated.length < 200 || !accumulated.includes('...')) {
+                  log('[#%d] text-delta (+%d chars, total=%d, t=%dms)', seq, delta.length, accumulated.length, t.toFixed(0));
+                }
                 callbacks?.onText(accumulated);
               }
             } else if (type === 'reasoning-delta') {
               const reasoningDelta = parsed.payload?.text || '';
               if (reasoningDelta) {
                 accumulatedReasoning += reasoningDelta;
+                log('[#%d] reasoning-delta (+%d chars, total=%d, t=%dms)', seq, reasoningDelta.length, accumulatedReasoning.length, t.toFixed(0));
                 callbacks?.onReasoning?.(accumulatedReasoning);
               }
             } else if (type === 'step-finish') {
               const toolCalls = parsed.payload?.stepResult?.output?.toolCalls;
               if (toolCalls && Array.isArray(toolCalls)) {
+                const names = toolCalls.map((tc: any) => tc.toolName || tc.tool || '?').join(', ');
+                log('[#%d] step-finish (tools: [%s], t=%dms)', seq, names, t.toFixed(0));
                 for (const tc of toolCalls) {
                   callbacks?.onToolCall?.({
                     tool: tc.toolName || tc.tool || 'unknown',
@@ -248,22 +258,28 @@ function parseSSE(
                     output: tc.result ? JSON.stringify(tc.result).slice(0, 2000) : undefined,
                   });
                 }
+              } else {
+                log('[#%d] step-finish (no tools, t=%dms)', seq, t.toFixed(0));
               }
             } else if (type === 'finish' || type === 'complete' || type === 'done' || type === 'text-end') {
-              console.log('[SSE] finish event, accumulated.length=%d', accumulated.length);
+              log('[#%d] %s (accumulated=%d chars, reasoning=%d chars, resolved=%s, t=%dms)', seq, type, accumulated.length, accumulatedReasoning.length, resolved, t.toFixed(0));
               if (!resolved) {
                 resolved = true;
                 callbacks?.onFinish(accumulated, accumulatedReasoning, threadId);
                 resolve({ threadId });
+              } else {
+                log('[#%d] ⚠️ duplicate finish ignored (already resolved)', seq);
               }
               return;
             } else if (type === 'error') {
               const rawErr = parsed.error || parsed.message || parsed.payload || 'Stream error';
-              console.error('[SSE error]', rawErr);
+              log('[#%d] ❌ error event: %s (t=%dms)', seq, rawErr, t.toFixed(0));
               callbacks?.onError(formatLLMError(rawErr));
+            } else {
+              log('[#%d] other event type=%s (t=%dms)', seq, type, t.toFixed(0));
             }
           } catch (e) {
-            console.warn('[SSE] non-JSON data (skipped):', data);
+            log('[#%d] non-JSON (skipped): %s', seq, data);
           }
         }
       }
@@ -272,34 +288,37 @@ function parseSSE(
     function pump(): Promise<void> {
       return reader!.read().then(({ done, value }) => {
         if (done) {
-          console.log('[SSE] stream done, buffer remaining:', JSON.stringify(buffer));
-          processLines();
+          const t = performance.now() - t0;
+          if (buffer.trim()) {
+            log('stream done, processing remaining buffer (t=%dms)', t);
+            processLines();
+          }
           if (!resolved) {
-            console.warn('[SSE] stream ended without finish event, accumulated.length=%d', accumulated.length);
+            log('⚠️ stream ended without finish event (accumulated=%d chars, t=%dms)', accumulated.length, t.toFixed(0));
             resolved = true;
             callbacks?.onFinish(accumulated, accumulatedReasoning, threadId);
             resolve({ threadId });
+          } else {
+            log('stream done (clean, t=%dms)', t);
           }
           return;
         }
         const chunk = decoder.decode(value, { stream: true });
-        console.log('[SSE] chunk:', JSON.stringify(chunk));
         buffer += chunk;
         processLines();
         return pump();
       }).catch((err) => {
-        console.error('[SSE] pump error:', err);
+        const t = performance.now() - t0;
+        log('❌ pump error (t=%dms): %s', t.toFixed(0), err);
         if (!resolved) {
           resolved = true;
-          // Route through formatLLMError so undici's "TypeError: unusable"
-          // and similar stream failures get a friendly message instead of
-          // the raw "[object Object]" / "TypeError: ..." leaking to the UI.
           callbacks?.onError(formatLLMError(err));
           resolve({ threadId });
         }
       });
     }
 
+    log('stream start');
     pump();
   });
 }

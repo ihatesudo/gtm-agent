@@ -90,8 +90,7 @@ const TOOL_LABELS: Record<string, string> = {
   record_project_decision: 'Record Decision',
 };
 
-function ToolCallCard({ call }: { call: ToolCall }) {
-  const [open, setOpen] = useState(false);
+function ToolCallBadge({ call }: { call: ToolCall }) {
   const label = TOOL_LABELS[call.tool] || call.tool;
 
   let inputSummary = '';
@@ -104,74 +103,31 @@ function ToolCallCard({ call }: { call: ToolCall }) {
   }
 
   return (
-    <div style={{
-      marginBottom: 8,
-      borderRadius: 'var(--radius-sm)',
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 4,
+      padding: '2px 8px',
+      borderRadius: 12,
+      fontSize: 11,
+      fontWeight: 500,
+      background: call.status === 'success' ? '#EEF2FF' : call.status === 'error' ? '#FEF2F2' : '#FEFCE8',
+      border: '1px solid',
+      borderColor: call.status === 'success' ? '#C7D2FE' : call.status === 'error' ? '#FECACA' : '#FDE68A',
+      color: call.status === 'success' ? '#4338CA' : call.status === 'error' ? '#991B1B' : '#92400E',
+      whiteSpace: 'nowrap',
       overflow: 'hidden',
-      border: '1px solid #C4B5FD',
-      background: '#F5F3FF',
-      boxShadow: 'var(--shadow-sm)',
-    }}>
-      <button onClick={() => setOpen(!open)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          width: '100%',
-          padding: '6px 12px',
-          border: 'none',
-          background: 'transparent',
-          cursor: 'pointer',
-          fontSize: 12.5,
-          color: '#5B21B6',
-          fontWeight: 600,
-          fontFamily: 'inherit',
-          textAlign: 'left',
-        }}
-      >
-        <span style={{
-          transform: open ? 'rotate(90deg)' : 'none',
-          transition: 'transform 0.15s ease',
-          fontSize: 10,
-          display: 'inline-block',
-        }}>▶</span>
-        <Icon name="tool" size={14} style={{ color: '#7C3AED' }} />
-        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {open ? label : `${label} · ${inputSummary || 'running…'}${inputSummary.length > 50 ? '…' : ''}`}
-        </span>
-        <span style={{
-          fontSize: 10,
-          padding: '1px 6px',
-          borderRadius: 8,
-          background: call.status === 'success' ? '#D1FAE5' : call.status === 'error' ? '#FEE2E2' : '#FEF3C7',
-          color: call.status === 'success' ? '#065F46' : call.status === 'error' ? '#991B1B' : '#92400E',
-        }}>
-          {call.status === 'success' ? 'done' : call.status === 'error' ? 'error' : '…'}
-        </span>
-      </button>
-      {open && (
-        <div style={{
-          padding: '8px 12px',
-          fontSize: 12,
-          lineHeight: 1.5,
-          color: '#4C1D95',
-          borderTop: '1px solid #C4B5FD',
-          background: 'rgba(255, 255, 255, 0.6)',
-          fontFamily: 'var(--font-mono)',
-        }}>
-          {call.output ? (
-            <div>
-              <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 11, color: '#6D28D9' }}>Output</div>
-              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 200, overflowY: 'auto' }}>
-                {call.output}
-              </div>
-            </div>
-          ) : (
-            <div style={{ fontStyle: 'italic', color: '#7C3AED' }}>Waiting for result…</div>
-          )}
-        </div>
-      )}
-    </div>
+      textOverflow: 'ellipsis',
+      maxWidth: 200,
+    }}
+      title={`${label}${inputSummary ? ` · ${inputSummary}` : ''}`}
+    >
+      <Icon name="tool" size={11} />
+      <span>{label}</span>
+      {call.status === 'success' && <span style={{ opacity: 0.6 }}>✓</span>}
+      {call.status === 'error' && <span style={{ opacity: 0.6 }}>✗</span>}
+      {call.status === 'pending' && <span className="pulse-dot" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#92400E' }} />}
+    </span>
   );
 }
 
@@ -342,11 +298,45 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
   );
 }
 
+const SHORT_AGENT: Record<string, string> = {
+  director: 'Director',
+  'paid-search': 'Paid Search',
+  'social-ads': 'Social Ads',
+  seo: 'SEO',
+  'b2b-linkedin': 'B2B LinkedIn',
+  'lifecycle-retention': 'Lifecycle',
+};
+
+const MODEL_LABEL: Record<string, string> = {
+  'gemini-flash': 'Gemini 2.5 Flash',
+  'gemini-pro': 'Gemini 2.5 Pro',
+  openrouter: 'OpenRouter',
+  glm: 'GLM-5.2',
+};
+
+function shortAgentName(agent: Agent) {
+  return SHORT_AGENT[agent.id] || agent.name;
+}
+
+const DROPDOWN_STYLE: React.CSSProperties = {
+  background: 'var(--surface-hover)',
+  border: '1px solid var(--border)',
+  color: 'var(--text)',
+  fontSize: 12,
+  padding: '4px 6px',
+  borderRadius: 'var(--radius-sm)',
+  outline: 'none',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  fontWeight: 500,
+  maxWidth: 120,
+};
+
 export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent, messages, streamingText, streamingReasoning, streamingToolCalls = [], sending, isReasoning, onSend }: Props) {
 
   const [input, setInput] = useState('');
   const [model, setModel] = useState('openrouter');
-  const [thinkingMode, setThinkingMode] = useState('medium');
+  const [thinkingMode, setThinkingMode] = useState('easy');
   
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -425,6 +415,7 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22, maxWidth: 720, margin: '0 auto' }}>
           {messages.map(msg => {
             const isUser = msg.role === 'user';
+            const isToolOnly = !isUser && (!msg.content || msg.content.trim() === '') && msg.toolCalls && msg.toolCalls.length > 0;
             return (
               <div key={msg.id} style={{ display: 'flex', gap: 12, flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
                 <div style={{
@@ -443,36 +434,49 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
                 }}>
                   <Icon name={isUser ? 'user' : (agent?.id === 'director' ? 'target' : 'bot')} size={16} />
                 </div>
-                <div style={{ maxWidth: '85%', position: 'relative' }}>
+                <div style={{ maxWidth: '85%', position: 'relative', minWidth: 0 }}>
                   {!isUser && msg.reasoning && (
                     <ReasoningAccordion text={msg.reasoning} />
                   )}
-                  {!isUser && msg.toolCalls && msg.toolCalls.length > 0 && (
-                    <div style={{ marginBottom: 8 }}>
-                      {msg.toolCalls.map(tc => (
-                        <ToolCallCard key={tc.id} call={tc} />
+                  {isToolOnly ? (
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 6,
+                      padding: '6px 0',
+                    }}>
+                      {msg.toolCalls!.map(tc => (
+                        <ToolCallBadge key={tc.id} call={tc} />
                       ))}
                     </div>
+                  ) : (
+                    <div style={{
+                      background: isUser ? 'var(--accent-gradient)' : 'var(--surface)',
+                      border: isUser ? 'none' : '1px solid var(--border)',
+                      borderRadius: 'var(--radius)',
+                      borderTopRightRadius: isUser ? 4 : 'var(--radius)',
+                      borderTopLeftRadius: isUser ? 'var(--radius)' : 4,
+                      padding: '12px 18px',
+                      fontSize: 14.5,
+                      lineHeight: 1.65,
+                      color: isUser ? '#ffffff' : 'var(--text)',
+                      boxShadow: isUser ? '0 3px 12px rgba(217, 97, 78, 0.2)' : 'var(--shadow-sm)',
+                    }}>
+                      {!isUser && msg.toolCalls && msg.toolCalls.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border-light)' }}>
+                          {msg.toolCalls.map(tc => (
+                            <ToolCallBadge key={tc.id} call={tc} />
+                          ))}
+                        </div>
+                      )}
+                      <FormattedMessage content={msg.content} isUser={isUser} />
+                      {!isUser && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, paddingTop: 6, borderTop: '1px solid var(--border-light)' }}>
+                          <CopyButton text={msg.content} label="Copy response" />
+                        </div>
+                      )}
+                    </div>
                   )}
-                  <div style={{
-                    background: isUser ? 'var(--accent-gradient)' : 'var(--surface)',
-                    border: isUser ? 'none' : '1px solid var(--border)',
-                    borderRadius: 'var(--radius)',
-                    borderTopRightRadius: isUser ? 4 : 'var(--radius)',
-                    borderTopLeftRadius: isUser ? 'var(--radius)' : 4,
-                    padding: '12px 18px',
-                    fontSize: 14.5,
-                    lineHeight: 1.65,
-                    color: isUser ? '#ffffff' : 'var(--text)',
-                    boxShadow: isUser ? '0 3px 12px rgba(217, 97, 78, 0.2)' : 'var(--shadow-sm)',
-                  }}>
-                    <FormattedMessage content={msg.content} isUser={isUser} />
-                    {!isUser && (
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, paddingTop: 6, borderTop: '1px solid var(--border-light)' }}>
-                        <CopyButton text={msg.content} label="Copy response" />
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             );
@@ -499,20 +503,19 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
               </div>
               <div style={{ maxWidth: '85%' }}>
                 <div style={{
-                  borderRadius: 'var(--radius)',
-                  border: '1px solid #FDE68A',
-                  background: 'var(--accent-amber-bg)',
-                  padding: '10px 14px',
+                  borderRadius: 20,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  padding: '6px 14px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
-                  fontSize: 13,
-                  color: '#92400E',
+                  gap: 8,
+                  fontSize: 12.5,
+                  color: 'var(--text-secondary)',
                   fontWeight: 500,
-                  boxShadow: 'var(--shadow-sm)',
                 }}>
-                  <span className="pulse-circle" style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-amber)' }} />
-                  <span>Thinking process started...</span>
+                  <span className="pulse-circle" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-amber)' }} />
+                  <span>Thinking…</span>
                 </div>
               </div>
             </div>
@@ -537,43 +540,48 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
               }}>
                 <Icon name={agent?.id === 'director' ? 'target' : 'bot'} size={16} />
               </div>
-              <div style={{ maxWidth: '85%' }}>
+              <div style={{ maxWidth: '85%', minWidth: 0 }}>
                 {streamingReasoning && (
                   <ReasoningAccordion text={streamingReasoning} />
                 )}
-                {streamingToolCalls.length > 0 && (
-                  <div style={{ marginBottom: 8 }}>
-                    {streamingToolCalls.map(tc => (
-                      <ToolCallCard key={tc.id} call={tc} />
-                    ))}
-                  </div>
-                )}
-                {streamingText && (
-                  <div style={{
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius)',
-                    borderTopLeftRadius: 4,
-                    padding: '12px 18px',
-                    fontSize: 14.5,
-                    lineHeight: 1.65,
-                    whiteSpace: 'pre-wrap',
-                    color: 'var(--text)',
-                    boxShadow: 'var(--shadow-sm)',
-                  }}>
-                    {streamingText}
-                    <span style={{
-                      display: 'inline-block',
-                      width: 6,
-                      height: 15,
-                      background: 'var(--accent)',
-                      marginLeft: 3,
-                      borderRadius: 1,
-                      verticalAlign: 'text-bottom',
-                      animation: 'blink 0.8s step-end infinite',
-                    }} />
-                  </div>
-                )}
+                <div style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius)',
+                  borderTopLeftRadius: 4,
+                  padding: '12px 18px',
+                  fontSize: 14.5,
+                  lineHeight: 1.65,
+                  color: 'var(--text)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}>
+                  {streamingToolCalls.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: streamingText ? 10 : 0, paddingBottom: streamingText ? 8 : 0, borderBottom: streamingText ? '1px solid var(--border-light)' : 'none' }}>
+                      {streamingToolCalls.map(tc => (
+                        <ToolCallBadge key={tc.id} call={tc} />
+                      ))}
+                    </div>
+                  )}
+                  {streamingText ? (
+                    <>
+                      {streamingText}
+                      <span style={{
+                        display: 'inline-block',
+                        width: 6,
+                        height: 15,
+                        background: 'var(--accent)',
+                        marginLeft: 3,
+                        borderRadius: 1,
+                        verticalAlign: 'text-bottom',
+                        animation: 'blink 0.8s step-end infinite',
+                      }} />
+                    </>
+                  ) : streamingToolCalls.length > 0 ? (
+                    <span style={{ fontSize: 12.5, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                      Using tools…
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </div>
           )}
@@ -638,21 +646,10 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
                 value={selectedAgentId}
                 onChange={(e) => onSelectAgent(e.target.value)}
                 disabled={sending}
-                style={{
-                  background: 'var(--surface-hover)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text)',
-                  fontSize: 12,
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  fontWeight: 600,
-                }}
+                style={{ ...DROPDOWN_STYLE, fontWeight: 600, maxWidth: 110 }}
               >
                 {agents.map(a => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
+                  <option key={a.id} value={a.id}>{shortAgentName(a)}</option>
                 ))}
               </select>
 
@@ -660,46 +657,24 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
                 value={model} 
                 onChange={(e) => setModel(e.target.value)}
                 disabled={!agent || sending}
-                style={{
-                  background: 'var(--surface-hover)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-secondary)',
-                  fontSize: 12,
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  fontWeight: 500,
-                }}
+                style={DROPDOWN_STYLE}
               >
-                <option value="gemini-flash">Gemini 2.5 Flash (Vertex)</option>
-                <option value="gemini-pro">Gemini 2.5 Pro (Vertex)</option>
-                <option value="openrouter">OpenRouter (Auto)</option>
-                <option value="glm">GLM-5.2 (智谱 Coding Plan)</option>
+                <option value="gemini-flash">{MODEL_LABEL['gemini-flash']}</option>
+                <option value="gemini-pro">{MODEL_LABEL['gemini-pro']}</option>
+                <option value="openrouter">{MODEL_LABEL['openrouter']}</option>
+                <option value="glm">{MODEL_LABEL['glm']}</option>
               </select>
 
               <select 
                 value={thinkingMode} 
                 onChange={(e) => setThinkingMode(e.target.value)}
                 disabled={!agent || sending}
-                style={{
-                  background: 'var(--surface-hover)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-secondary)',
-                  fontSize: 12,
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  fontWeight: 500,
-                }}
+                style={{ ...DROPDOWN_STYLE, maxWidth: 100 }}
               >
-                <option value="none">No Thinking</option>
-                <option value="easy">Thinking: Easy</option>
-                <option value="medium">Thinking: Medium</option>
-                <option value="hard">Thinking: Hard</option>
+                <option value="none">No Think</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
               </select>
             </div>
             
@@ -757,6 +732,9 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
         }
         .pulse-circle {
           animation: pulse-op 1.5s ease-in-out infinite;
+        }
+        .pulse-dot {
+          animation: pulse-op 1.2s ease-in-out infinite;
         }
       `}</style>
     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Agent, Message, ToolCall } from './types';
 import { fetchAgents, sendMessageStream } from './lib/api';
 import Sidebar from './components/Sidebar';
@@ -74,6 +74,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isObservabilityOpen, setIsObservabilityOpen] = useState(false);
   const [isAgentEditorOpen, setIsAgentEditorOpen] = useState(false);
+  const currentToolCallsRef = useRef<ToolCall[]>([]);
 
   useEffect(() => {
     applyFontToDocument(settings.fontStyle);
@@ -97,8 +98,9 @@ export default function App() {
     setMessages([]);
     setStreamingText('');
     setStreamingReasoning('');
-      setIsReasoning(false);
-      setStreamingToolCalls([]);
+    setIsReasoning(false);
+    setStreamingToolCalls([]);
+    currentToolCallsRef.current = [];
     setThreadId(null);
   }, []);
 
@@ -115,6 +117,7 @@ export default function App() {
       setStreamingReasoning('');
       setIsReasoning(false);
       setStreamingToolCalls([]);
+      currentToolCallsRef.current = [];
     }
   }, [threads]);
 
@@ -123,6 +126,7 @@ export default function App() {
       if (!selectedAgentId || sending) return;
       setSending(true);
       setIsReasoning(false);
+      currentToolCallsRef.current = [];
       setStreamingToolCalls([]);
 
       const activeThreadId = threadId || ('t-' + Date.now());
@@ -135,29 +139,28 @@ export default function App() {
           onText: (text) => { setIsReasoning(false); setStreamingText(text); },
           onReasoning: (reasoning) => { setIsReasoning(true); setStreamingReasoning(reasoning); },
           onToolCall: (call) => {
-            setStreamingToolCalls(prev => [
-              ...prev,
-              { id: 'tc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ...call, status: 'success' as const },
-            ]);
+            const tc: ToolCall = { id: 'tc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ...call, status: 'success' as const };
+            currentToolCallsRef.current = [...currentToolCallsRef.current, tc];
+            setStreamingToolCalls(currentToolCallsRef.current);
           },
           onFinish: (fullText, reasoning, streamThreadId) => {
-            setStreamingToolCalls(prev => {
-              const assistantMsg: Message = {
-                id: 'a-' + Date.now(),
-                role: 'assistant',
-                content: fullText,
-                reasoning,
-                toolCalls: prev.length > 0 ? [...prev] : undefined,
-                createdAt: new Date().toISOString(),
-              };
-              const targetTid = streamThreadId || activeThreadId;
-              setMessages(msgs => {
-                const updated = [...msgs, assistantMsg];
-                saveThreadMessages(targetTid, updated);
-                return updated;
-              });
-              return [];
+            const finalToolCalls = currentToolCallsRef.current;
+            currentToolCallsRef.current = [];
+            const assistantMsg: Message = {
+              id: 'a-' + Date.now(),
+              role: 'assistant',
+              content: fullText,
+              reasoning,
+              toolCalls: finalToolCalls.length > 0 ? finalToolCalls : undefined,
+              createdAt: new Date().toISOString(),
+            };
+            const targetTid = streamThreadId || activeThreadId;
+            setMessages(msgs => {
+              const updated = [...msgs, assistantMsg];
+              saveThreadMessages(targetTid, updated);
+              return updated;
             });
+            setStreamingToolCalls([]);
             setStreamingText('');
             setStreamingReasoning('');
             setIsReasoning(false);
@@ -212,9 +215,6 @@ export default function App() {
   return (
     <div style={{ display: 'flex', height: '100%', width: '100%', background: 'var(--main-bg)' }}>
       <Sidebar
-        agents={agents}
-        selectedAgentId={selectedAgentId}
-        onSelectAgent={setSelectedAgentId}
         onNewChat={handleNewChat}
         threads={threads}
         selectedThreadId={threadId}
@@ -225,7 +225,13 @@ export default function App() {
         onOpenAgentEditor={() => setIsAgentEditorOpen(true)}
       />
       {isEmpty ? (
-        <WelcomeView onSend={handleSend} sending={sending} />
+        <WelcomeView
+          agents={agents}
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={setSelectedAgentId}
+          onSend={handleSend}
+          sending={sending}
+        />
       ) : (
         <ChatView
           agents={agents}
