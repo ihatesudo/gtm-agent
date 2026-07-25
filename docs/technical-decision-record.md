@@ -12,7 +12,7 @@ All decisions below were resolved through a structured interview on 2026-07-24.
 | 2 | File/Asset Storage | **Turso (metadata) + Cloudflare R2 (blobs)** | `node:fs` doesn't exist on Workers. R2 is S3-compatible, supports images/attachments, $0.015/GB/month. |
 | 3 | Skills/Playbooks | **Build-time JSON bundle** | Embed all 47 skill MDs into a static JSON registry at `mastra build` time. Zero runtime I/O, updates on deploy. |
 | 4 | CLI Tool Execution | **Replace `execFile` with direct `fetch()` API calls** | `child_process` is forbidden in V8. Each platform integration (Resend, Ahrefs, GA4) becomes a dedicated Mastra tool using `fetch()`. |
-| 5 | LLM Model | **Gemini API key mode** (`google/gemini-2.5-flash`) | Works on Cloudflare Workers (no ADC token refresh needed). Vertex AI ADC requires Google Cloud runtime. |
+| 5 | LLM Model | **Vertex AI via service account** (SA JSON inline in env) | Service account is the only auth shape. No ADC, no API key mode. SA JSON passed via `GOOGLE_APPLICATION_CREDENTIALS` inline — works in V8/Workers with no filesystem dependency. |
 | 6 | Model Tier Strategy | **Director: Gemini 3.5 (stronger reasoning)**, Specialists: Gemini Flash (cheaper) | Trial users get $0.50 budget (~500K tokens). Higher-tier model for Director ensures quality campaign planning. |
 | 7 | Web Crawling | **Cloudflare Browser Run** (primary) + DuckDuckGo `fetch()` (fallback) | Browser Run is GA, supports Playwright natively inside Workers. 10hr/mo on $5 plan. Fallback to simple fetch when sessions exhausted. |
 | 8 | Authentication | **Cloudflare Access + JWT** | Free for ≤50 users, supports Google/GitHub OAuth. JWT in cookie, credit balance lookup in Turso. |
@@ -98,8 +98,9 @@ Each tool is self-contained, testable, and V8-safe.
 | Director | `google/gemini-3.5-flash` | ~$0.15/1M input tokens |
 | All Specialists | `google/gemini-2.5-flash` | ~$0.075/1M input tokens |
 
-- Use Gemini API key mode (env var `GEMINI_API_KEY`), not Vertex AI ADC
-- Install `@ai-sdk/google` package for Mastra integration
+- Use Vertex AI service account mode (`GOOGLE_APPLICATION_CREDENTIALS` as inline JSON), no ADC
+- OpenRouter as default free-tier fallback; GLM as third option
+- Mastra picks provider dynamically via `pickProvider` — no `GENAI_PROVIDER` pinning needed
 
 ---
 

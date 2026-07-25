@@ -1,7 +1,7 @@
 # Marketing Roles — Director + 6 Specialists
 
 **Date:** 2026-07-16
-**Status:** Approved (Director-as-base + selectable `--role`; YAML definitions; full code wiring)
+**Status:** **Implemented** — 7 roles shipped, `--role`/`/role`/`/roles` wired in CLI + Mastra.
 
 ## Goal
 

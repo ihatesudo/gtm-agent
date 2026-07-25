@@ -3,7 +3,9 @@ SHELL := /bin/sh
 
 PY := uv run python
 WRK := cd workers/backend
-ENV_LOAD := set -a && { [ -f .env ] && . ./.env; }; set +a
+# Single source of truth: mastra/.env. There is intentionally NO root-level
+# .env — both the Mastra engine and the Python CLI load this one file.
+ENV_LOAD := set -a && { [ -f mastra/.env ] && . ./mastra/.env; }; set +a
 
 .PHONY: help setup setup-deps lint auth env run agent ask role skill menu roles skills clean \
         web-dev web-deploy web-secrets \
@@ -36,7 +38,7 @@ help: ## Show this help
 	@echo "Cloudflare Workers (deployment):"
 	@echo "  web-dev      Run the Workers dev server locally (port 8787)"
 	@echo "  web-deploy   Generate data + deploy to Cloudflare Workers"
-	@echo "  web-secrets  Batch-set wrangler secrets from .env: make web-secrets [ENV_FILE=path]"
+	@echo "  web-secrets  Batch-set wrangler secrets from mastra/.env: make web-secrets [ENV_FILE=path]"
 	@echo ""
 	@echo "Housekeeping:"
 	@echo "  clean     Remove .venv and build artifacts"
@@ -79,10 +81,10 @@ run agent: ## Interactive REPL (Python CLI)
 
 MASTRA = cd mastra
 
-dev: ## Dev mode — full Studio UI with root .env loaded (port 4111)
+dev: ## Dev mode — full Studio UI with mastra/.env loaded (port 4111)
 	@$(ENV_LOAD); $(MASTRA) && npm run dev
 
-test: ## Start production-like custom UI with root .env loaded (port 4111)
+test: ## Start production-like custom UI with mastra/.env loaded (port 4111)
 	@$(ENV_LOAD); $(MASTRA) && npm run test
 
 ui-build: ## Build custom chat UI for test/prod mode
@@ -126,9 +128,9 @@ web-deploy: ## Deploy to Cloudflare Workers
 	@$(WRK) && npm run deploy
 	@echo "Deployed! Set secrets: make web-secrets"
 
-web-secrets: ## Batch-set wrangler secrets from .env: make web-secrets [ENV_FILE=path]
+web-secrets: ## Batch-set wrangler secrets from mastra/.env: make web-secrets [ENV_FILE=path]
 	@$(WRK) && \
-	  f="${ENV_FILE:-../../.env}"; \
+	  f="${ENV_FILE:-../../mastra/.env}"; \
 	  [ -f "$$f" ] || { echo "ERROR: $$f not found"; exit 1; }; \
 	  echo "Setting secrets from $$f ..."; \
 	  while IFS='=' read -r key val; do \

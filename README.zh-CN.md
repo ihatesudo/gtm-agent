@@ -41,12 +41,13 @@
 | 💾 | **产出落盘** | 最终文案、策略、关键词表存成 `output/` 里的文件——不会在聊天滚动里丢失。 |
 | 🔍 | **有据可查，不瞎编** | 实时信息（价格、竞品动态、关键词热度）先搜索再下结论。 |
 | 🇨🇳 | **中文优先** | 说你的语言；专业、具体、直击要点。 |
-| 🔌 | **自带模型** | OpenRouter（默认）、Vertex AI、Gemini API，或任何 LLM 提供商——随你选。 |
+| 🔌 | **自带模型** | OpenRouter（默认，免费档）或经服务账号的 Vertex AI（消耗 GCP 试用额度）。GLM 走智谱 Coding Plan。 |
 | ⚙️ | **双运行时，同一大脑** | [Python CLI](#快速开始) 适合终端用户 + [Mastra 引擎](#mastra-活动编排引擎) 适合活动流程编排。共享同一套角色、技能和工具集成。 |
 | 🧩 | **多轮对话** | Mastra 引擎支持持久聊天会话，带对话历史记忆。 |
 | 🏗️ | **活动工作流** | Mastra 引擎执行结构化三步流程：策略 → 执行 → 复盘。 |
 | 👔 | **主管委派** | Mastra 引擎的 Director 自动将任务分派给对应专家。 |
 | 🧠 | **跨会话记忆** | Mastra 引擎跨会话记住你的产品、ICP、品牌口吻和过往活动。 |
+| 🎨 | **Mastra Studio Web UI** | 完整聊天界面，支持模型选择、角色侧边栏、活动面板、思考块、工具调用展示——已定制交付。 |
 
 ---
 
@@ -223,11 +224,10 @@ Salesforce、Stripe、Shopify、Twilio、PostHog、Clay、ZoomInfo 等等——�
 
 ## 快速开始
 
-**三个命令，拿到你的第一份交付物。** 认真的。
+**两个命令，拿到你的第一份交付物。** 认真的。
 
 ```bash
 make setup     # uv sync — 安装依赖
-make auth      # 一次性：gcloud application-default login（启用 Vertex AI）
 make run       # 交互式 REPL
 ```
 
@@ -308,10 +308,15 @@ Reflex 应用通过 `make web` 启动。它使用 Appwrite Magic URL 认证：
 > 👉 **第一次来？** 运行 `make run`，然后输入一段真实的 brief——
 > *"我的 SaaS 要在北美做冷启动，给我 90 天获客计划"*——然后看 Director 如何分发任务。或者直接跳到某个专家：`make role NAME=seo MSG="..."`。
 
-鉴权二选一（由 `GENAI_PROVIDER` 自动判断）：
+### Provider（动态选择，无需手动切换 key）
 
-- **Vertex AI（默认）：** 通过 `gcloud auth application-default login` 的 ADC。需要在 `.env` 里设 `GOOGLE_CLOUD_PROJECT`。无需 API key。
-- **Gemini Developer API：** 在 `.env` 里设 `GENAI_PROVIDER=api` 和 `GEMINI_API_KEY`。
+Provider 根据 `.env` 里配了什么**自动决定**，不需要手设 `GENAI_PROVIDER`：
+
+- **OpenRouter（默认，免费档）**——需要 `OPENROUTER_API_KEY`。当没有 Vertex 服务账号时使用。
+- **Vertex AI / Gemini**——把 `GOOGLE_APPLICATION_CREDENTIALS` 指向一个服务账号 JSON，Gemini 就**消耗你的 GCP 试用额度**。服务账号是 Gemini *唯一* 的鉴权方式——**永远不使用 AI Studio / Express API key。**
+- **GLM**——`ZHIPU_API_KEY`，走智谱 Coding Plan 的 OpenAI 兼容端点。
+
+在 `.env` 放入服务账号，Vertex 自动接管；移除它就回到 OpenRouter。在 Mastra UI 里，模型下拉会按请求强制指定 provider，不受默认值影响。
 
 ## 运行 agent
 
@@ -344,12 +349,6 @@ make skills     # 浏览 47 个技能手册
 
 团队这个比喻是地基，下面是接下来的方向。
 
-**v0.2 已完成**
-- **会真正委派的 Director。** Mastra 引擎的主管 agent 读取 brief 后，自动判断需要哪位专家，把活派下去——再把各自产出缝合成一份交付物。
-- **项目记忆。** 团队跨会话记住你的产品、ICP、品牌口吻和过往活动——不用每次都重新解释背景。
-- **活动工作流。** 结构化三步流程（策略 → 执行 → 复盘），带状态追踪和回滚。
-- **多轮对话。** 持久聊天会话，完整历史记录。
-
 **近期**
 - **真正的平台执行，而不只是指南。** 今天这 100+ 集成是 agent 会读的 how-to 参考。下一步是"动手"——启动一条 Google Ads 投放、发一个 Klaviyo 流、拉取实时 GA4 数据——在可选的 API key 背后实现。
 - **CLI → Mastra 桥接。** 一个薄的 CLI 封装，委托给 Mastra HTTP API，这样 `make run` 和 `npm run dev` 变成一个引擎的两个界面。
@@ -357,14 +356,13 @@ make skills     # 浏览 47 个技能手册
 
 **中期**
 - **评测与自我改进。** 一套带评分的营销任务集，让每个角色的产出是被衡量、而不是被感觉的。
-- **基于 Mastra Studio 的 Web UI。** Mastra Studio 自带开箱即用的聊天 UI——为其定制非工程师友好的界面：角色侧边栏、活动面板、交付物预览。
 
 **远期 / 探索中**
 - **人在回路检查点**——任何要花钱或触达客户的事，先让人过目。
 - **多语言扩展**——在中文优先之外。
 - **"营销顾问团"实时模式**——在你拍板前，多位顾问实时辩论一个决策。
 
-欢迎想法与贡献——已建部分的设计思路见 `docs/superpowers/specs/`。
+欢迎想法与贡献——已建部分的设计思路见 `docs/specs/` 和 `docs/technical-decision-record.md`。
 
 ---
 

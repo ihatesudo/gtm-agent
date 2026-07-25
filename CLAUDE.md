@@ -26,16 +26,13 @@ Prompt layering (in `agent._compose_prompt`):
 ## Run it
 
 ```bash
-make setup && make auth          # uv sync; gcloud ADC for Vertex
-make run                         # REPL
+make setup && make run            # uv sync + REPL
 make ask MSG="..."               # one-shot as Director
 make role NAME=seo MSG="..."     # one-shot as a specialist
 make role NAME=seo MSG="..." ; make skill NAME=ads MSG="..."   # role + skill
 make roles | make skills         # browse menus
-```
 
-Auth: Vertex AI (ADC, needs `GOOGLE_CLOUD_PROJECT`) by default; or
-`GENAI_PROVIDER=api` + `GEMINI_API_KEY`. Config lives in `.env`.
+Auth: service account JSON inline in `GOOGLE_APPLICATION_CREDENTIALS` (Vertex AI, burns GCP trial credits). No ADC, no API key mode. OpenRouter and GLM also supported — provider picked dynamically from what's in `.env`. Config lives in `.env`.
 
 ## Architecture map
 

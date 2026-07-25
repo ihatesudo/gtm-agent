@@ -3,11 +3,17 @@
 Supports multiple LLM providers via the ``provider`` parameter.
 Gemini is the default; OpenAI-compatible providers (DeepSeek, GLM, etc.)
 use ``ChatOpenAI`` with a provider-specific base URL and API key.
+
+Provider selection mirrors Mastra's model.ts: ``pickProvider`` checks for a
+Vertex service account → Vertex AI (GCP trial credits); otherwise → OpenRouter
+free tier. No ADC, no AI Studio / Express API keys.
 """
 
 from __future__ import annotations
 
+import json
 import os
+import tempfile
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
@@ -67,42 +73,102 @@ General principles:
 SYSTEM_PROMPT = SYSTEM_PROMPT_ZH
 
 
+# ─── Vertex SA resolution (port of Mastra model.ts resolveVertexCredentials) ┤
+
+
+def _resolve_vertex_credentials() -> str | None:
+    """Resolve Vertex service-account credentials from env.
+
+    Returns the path to a SA JSON file (possibly a temp file for inline JSON),
+    or None when no valid credential is found.  Mutates
+    ``GOOGLE_APPLICATION_CREDENTIALS`` so that ``google.auth.default()`` can
+    read it (Python's SDK expects a file path, not inline JSON).
+
+    Accepts three shapes, matching Mastra's ``resolveVertexCredentials``:
+      1. Inline SA JSON  → written to a temp file
+      2. File path        → used as-is
+      3. Separate fields  → ``GOOGLE_CLIENT_EMAIL`` + ``GOOGLE_PRIVATE_KEY``
+    """
+    raw = (os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") or "").strip()
+    if not raw:
+        return None
+
+    # 1. Inline SA JSON (Cloudflare deploy shape — works in Node, needs temp
+    #    file for Python's google.auth).
+    if raw.startswith("{"):
+        try:
+            parsed = json.loads(raw)
+            if not parsed.get("client_email") or not parsed.get("private_key"):
+                return None
+            tmp = tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            )
+            json.dump(parsed, tmp)
+            tmp.flush()
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp.name
+            return tmp.name
+        except (json.JSONDecodeError, KeyError, OSError):
+            return None
+
+    # 2. File path (local-dev convenience).
+    if os.path.isfile(raw):
+        return raw
+
+    return None
+
+
+# ─── Provider picker (port of Mastra model.ts pickProvider) ┤
+
+
+def _pick_provider() -> str:
+    """Pick the default provider — port of Mastra's ``pickProvider``.
+
+    1. ``GENAI_PROVIDER`` explicitly set → respect it.
+    2. Service account JSON/fields present → ``vertex`` (burn GCP trial credits).
+    3. Otherwise → ``openrouter`` (free-tier fallback).
+
+    No ADC, no AI Studio / Express API keys.
+    """
+    explicit = os.environ.get("GENAI_PROVIDER", "").strip().lower()
+    if explicit in ("vertex", "openrouter", "gemini"):
+        return explicit
+    if explicit:
+        # Any other value (deepseek, glm, etc.) — pass through
+        return explicit
+    return "vertex" if _resolve_vertex_credentials() else "openrouter"
+
+
+# ─── Model factories ┤
+
+
 def _build_gemini(include_thoughts: bool) -> ChatGoogleGenerativeAI:
-    """Build the Gemini chat model (Vertex ADC or Developer API)."""
+    """Build Gemini — Vertex AI via SA, or API key fallback.  No ADC."""
     model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    backend = os.environ.get("GENAI_PROVIDER", "").strip().lower()
-    use_vertex = backend == "vertex" or os.environ.get(
-        "GOOGLE_GENAI_USE_VERTEXAI", ""
-    ).strip().lower() == "true"
+    common = dict(model=model, temperature=0.7, include_thoughts=include_thoughts)
 
-    common = dict(
-        model=model,
-        temperature=0.7,
-        include_thoughts=include_thoughts,
-    )
-
-    if use_vertex:
+    # Vertex via service account (burns GCP trial credits).
+    sa_path = _resolve_vertex_credentials()
+    if sa_path:
         os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "us-central1")
         project = os.environ.get("GOOGLE_CLOUD_PROJECT")
-        if not project:
-            raise RuntimeError(
-                "Vertex mode needs GOOGLE_CLOUD_PROJECT. Set it in .env "
-                "(your GCP project id)."
-            )
-        return ChatGoogleGenerativeAI(**common)
+        if project:
+            return ChatGoogleGenerativeAI(**common)
 
+    # API key fallback.
     api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "GEMINI_API_KEY is missing and GENAI_PROVIDER is not 'vertex'. "
-            "Either set a valid Gemini API key, or use Vertex "
-            "(GENAI_PROVIDER=vertex with ADC). See .env."
-        )
-    return ChatGoogleGenerativeAI(google_api_key=api_key, **common)
+    if api_key:
+        return ChatGoogleGenerativeAI(google_api_key=api_key, **common)
+
+    raise RuntimeError(
+        "No Gemini model available. "
+        "Set up Vertex AI by putting a service account JSON in "
+        "GOOGLE_APPLICATION_CREDENTIALS (inline or file path), "
+        "or set GEMINI_API_KEY in .env."
+    )
 
 
 def _build_openai_compatible(config_name: str) -> ChatOpenAI:
-    """Build ChatOpenAI for a provider config (DeepSeek, GLM, etc.)."""
+    """Build ChatOpenAI for a provider config (OpenRouter, DeepSeek, GLM, etc.)."""
     from . import providers_loader
 
     config = providers_loader.load_provider(config_name)
@@ -123,23 +189,24 @@ def _build_openai_compatible(config_name: str) -> ChatOpenAI:
 def build_model(include_thoughts: bool = True, provider: str | None = None):
     """Build a chat model for the given provider.
 
-    - ``provider=None`` or ``"gemini"`` — Gemini (Vertex ADC or Developer API).
-    - ``provider="deepseek"`` — DeepSeek via OpenAI-compatible adapter.
-    - Any other provider name — looked up in ``providers/`` and built via
+    - ``provider=None`` or ``"auto"`` → dynamic ``_pick_provider()`` (Vertex SA
+      if available, else OpenRouter).
+    - ``"vertex"/"gemini"`` → Gemini via SA or API key.
+    - Any other provider name → looked up in ``providers/`` and built via
       ``ChatOpenAI``.
 
     When *provider* is unspecified, the ``PROVIDER`` env var is read as the
-    default (falls back to ``"gemini"``).
+    default (falls back to dynamic pick).
     """
     if provider is None:
-        # Prefer PROVIDER; fall back to GENAI_PROVIDER (documented in README/.env)
-        # so that GENAI_PROVIDER=openrouter works without setting PROVIDER.
         provider = (
             os.environ.get("PROVIDER")
             or os.environ.get("GENAI_PROVIDER")
-            or "gemini"
+            or "auto"
         ).strip().lower()
-    if provider in (None, "", "gemini"):
+    if provider in (None, "", "auto"):
+        provider = _pick_provider()
+    if provider in ("vertex", "gemini"):
         return _build_gemini(include_thoughts=include_thoughts)
     return _build_openai_compatible(provider)
 

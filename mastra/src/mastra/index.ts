@@ -1,7 +1,7 @@
 import { Mastra } from '@mastra/core';
 import { CloudflareDeployer } from '@mastra/deployer-cloudflare';
 import { LibSQLStore } from '@mastra/libsql';
-import { Observability, MastraStorageExporter } from '@mastra/observability';
+import { Observability, ConsoleExporter } from '@mastra/observability';
 import { MastraEditor } from '@mastra/editor';
 import { directorAgent } from './agents/director.js';
 import { ALL_SPECIALIST_AGENTS } from './agents/specialists.js';
@@ -43,13 +43,16 @@ export const editor = new MastraEditor({
   source: 'db',
 });
 
+// Trace to the console instead of the storage layer. MastraStorageExporter
+// calls `observabilityStorage.batchCreateLogs(...)`, which LibSQLStore does not
+// implement — that threw "storage provider does not support batch creating
+// logs" on every request and surfaced as a mid-stream `TypeError: unusable`.
+// ConsoleExporter keeps telemetry visible without touching storage.
 export const observability = new Observability({
   configs: {
     default: {
       serviceName: 'gtm-agent',
-      exporters: [
-        new MastraStorageExporter(),
-      ],
+      exporters: [new ConsoleExporter()],
     },
   },
 });

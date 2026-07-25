@@ -58,12 +58,13 @@ instead of "it depends."
 | 💾 | **Deliverables on disk** | Final copy, strategies, keyword lists saved to `output/` as files — not lost in a chat scroll. |
 | 🔍 | **Grounded, not guessed** | Real-time facts (prices, competitor moves, keyword popularity) are searched before they're stated. |
 | 🇨🇳 | **Chinese-first** | Speaks your language; professional, specific, and to the point. |
-| 🔌 | **Bring-your-own model** | OpenRouter (default), Vertex AI, Gemini API, or any LLM provider — your choice. |
+| 🔌 | **Bring-your-own model** | OpenRouter (default, free tier) or Vertex AI via service account (burns GCP trial credits). GLM via the Zhipu coding plan. |
 | ⚙️ | **Two runtimes, one brain** | [Python CLI](#quick-start) for terminal-first users + [Mastra engine](#mastra-campaign-orchestrator) for campaign workflow orchestration. Share the same roles, skills, and tool integrations. |
 | 🧩 | **Multi-turn conversations** | Mastra engine supports persistent chat sessions with memory of past turns. |
 | 🏗️ | **Campaign workflows** | Mastra engine runs structured 3-step plans: strategy → execution → review. |
 | 👔 | **Supervisor delegation** | Mastra engine's Director agent routes work to specialists automatically. |
 | 🧠 | **Cross-session memory** | Mastra engine remembers your product, ICP, brand voice, and past campaigns across sessions. |
+| 🎨 | **Mastra Studio Web UI** | Full chat UI with model dropdown, role sidebar, campaign dashboard, thinking blocks, tool call visualization — shipped and customized. |
 
 ---
 
@@ -250,11 +251,10 @@ in `output/` within minutes.
 
 ## Quick start
 
-**Three commands to your first deliverable.** Seriously.
+**Two commands to your first deliverable.** Seriously.
 
 ```bash
 make setup     # uv sync — install dependencies
-make auth      # one-time: gcloud application-default login (enables Vertex AI)
 make run       # interactive REPL — you're talking to the team
 ```
 
@@ -365,10 +365,15 @@ Browser → Appwrite Sites (static Reflex UI) → Render (Reflex events/WebSocke
 The older `make release` targets remain available for Reflex Cloud, but they are
 not used by this Appwrite + Render architecture.
 
-Auth is one of two paths (auto-selected by `GENAI_PROVIDER`):
+### Providers (dynamic — no key juggling)
 
-- **Vertex AI (default):** ADC via `gcloud auth application-default login` for local dev, or Service Account JSON key (`GOOGLE_APPLICATION_CREDENTIALS`) for production server deployment. Needs `GOOGLE_CLOUD_PROJECT` in `.env`. See [GCP Vertex AI Deployment Guide](docs/gcp.deploy.md) for step-by-step Service Account creation and $300 trial credit setup.
-- **Gemini Developer API:** set `GENAI_PROVIDER=api` and `GEMINI_API_KEY` in `.env`.
+The provider is chosen automatically from what's in `.env` — you don't pin `GENAI_PROVIDER`:
+
+- **OpenRouter (default, free tier)** — needs `OPENROUTER_API_KEY`. Used when no Vertex service account is present.
+- **Vertex AI / Gemini** — point `GOOGLE_APPLICATION_CREDENTIALS` at a service account JSON and Gemini burns your **GCP trial credits**. Service account is the *only* Gemini auth shape — **AI Studio / Express API keys are never used.**
+- **GLM** — `ZHIPU_API_KEY` via the Zhipu coding-plan OpenAI-compatible endpoint.
+
+Drop a service account into `.env` and Vertex takes over automatically; remove it and you're back on OpenRouter. In the Mastra UI, the model dropdown forces a specific provider per request regardless of the default.
 
 > 👉 **New here?** Run `make run`, then type a real brief —
 > *"我的 SaaS 要在北美做冷启动，给我 90 天获客计划"* — and watch the Director
@@ -405,16 +410,6 @@ Role and skill are re-resolved per task, so switching takes effect on the next p
 
 The team metaphor is the foundation; here's where it's headed.
 
-**Done in v0.2**
-- **A Director that delegates.** The Mastra engine's supervisor agent reads a brief,
-  decides which specialist(s) are needed, and routes the work automatically —
-  then stitches their outputs into one deliverable.
-- **Project memory.** The team remembers your product, ICP, brand voice, and past
-  campaigns across sessions — no more re-explaining context every time.
-- **Campaign workflows.** Structured 3-step plans (strategy → execution → review)
-  with state tracking and rollback.
-- **Multi-turn conversations.** Persistent chat sessions with full history.
-
 **Soon**
 - **Real platform execution, not just guides.** Today the 100+ integrations are
   how-to references the agent reads. The next step is *acting* — launching a Google
@@ -428,9 +423,6 @@ The team metaphor is the foundation; here's where it's headed.
 **Next**
 - **Eval & self-improvement.** A scored suite of marketing tasks so each role's
   output is measured, not just felt.
-- **Web UI via Mastra Studio.** Mastra Studio already provides a chat UI out of
-  the box — customize it for non-engineers: role sidebar, campaign dashboard,
-  deliverable preview.
 
 **Later / exploring**
 - **Human-in-the-loop checkpoints** for anything spending money or sending to
@@ -439,7 +431,7 @@ The team metaphor is the foundation; here's where it's headed.
 - **A "marketing council" live mode** — multiple advisors debating a decision in
   real time before you commit.
 
-Ideas and contributions welcome — see `docs/superpowers/specs/` for the design
+Ideas and contributions welcome — see `docs/specs/` and `docs/technical-decision-record.md` for the design
 thinking behind what's built so far.
 
 ---

@@ -117,10 +117,7 @@
 
 ## 5. 云部署与数据库调研 (Cloud Deployment & Database Research)
 
-关于部署至 Cloudflare Workers 的资费对比、数据库选择（Turso vs D1）和部署细节，请参考以下报告：
-- [技术决策记录 (technical-decision-record.md)](file:///Users/miczhuang/Code/AI/gtm-agent/docs/technical-decision-record.md)
-- [云部署调研报告 (cloud-deployment-research.md)](file:///Users/miczhuang/Code/AI/gtm-agent/docs/cloud-deployment-research.md)
-- [生产环境部署 Gap 分析 (prd-gap-analysis.md)](file:///Users/miczhuang/Code/AI/gtm-agent/docs/prd-gap-analysis.md)
+关于部署相关的技术决策，请参考[技术决策记录 (technical-decision-record.md)](file:///Users/miczhuang/Code/AI/gtm-agent/docs/technical-decision-record.md)。
 
 ---
 

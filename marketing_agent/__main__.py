@@ -36,6 +36,12 @@ REPL commands:
     /provider     pick / switch the active LLM provider
     /help         help
     /quit         quit
+
+Environment:
+    Reads ``mastra/.env`` via python-dotenv (single source of truth shared with
+    the Mastra engine).  When run through ``make`` the Makefile shell-sources
+    ``mastra/.env`` first; the dotenv call here catches direct invocation via
+    ``uv run python -m marketing_agent`` so you never need a second ``.env``.
 """
 
 from __future__ import annotations
@@ -45,6 +51,7 @@ import asyncio
 import os
 import sys
 
+from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
 
 from . import providers_loader, roles_loader, skills_loader
@@ -547,6 +554,7 @@ def repl(
 
 
 def main() -> None:
+    load_dotenv("mastra/.env")  # single .env shared with Mastra engine
     parser = argparse.ArgumentParser(
         prog="marketing_agent",
         description="Marketing agent (streamed output, thinking toggleable, skill playbooks)",

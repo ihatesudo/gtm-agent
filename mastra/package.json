@@ -10,6 +10,7 @@
     "build": "mastra build",
     "test:full": "npm run build && npm run ui:build && node scripts/prepare-local-worker-env.mjs && wrangler dev --local --port 4111 --config .mastra/output/wrangler.json",
     "test": "npm run dev & (node -e \"async function w(){for(let i=0;i<40;i++){try{const r=await fetch('http://localhost:4111/api/agents');if(r.ok)return;}catch{}await new Promise(r=>setTimeout(r,400));}}w();\" && npm run --prefix ui dev)",
+    "test:unit": "vitest run",
     "ui:build": "mkdir -p .mastra/output/studio && (cd ui && npm run build) && cp -r ui/dist/* .mastra/output/studio/",
     "prd": "mastra build",
     "deploy": "mastra build && npm run ui:build && wrangler deploy --config .mastra/output/wrangler.json",
@@ -20,7 +21,6 @@
     "test:smoke:live": "MASTRA_URL=http://localhost:4111 node ui/scripts/smoke-test.mjs"
   },
   "dependencies": {
-    "@ai-sdk/google": "^4.0.24",
     "@ai-sdk/google-vertex": "^5.0.30",
     "@ai-sdk/openai": "^4.0.20",
     "@libsql/client": "latest",
@@ -37,6 +37,7 @@
     "mastra": "latest",
     "tsx": "^4.23.1",
     "typescript": "^5.7.0",
+    "vitest": "^4.1.10",
     "wrangler": "^4.0.0"
   }
 }

@@ -1,4 +1,4 @@
-import { resolveVertexCredentials } from './model.js';
+import { resolveVertexCredentials, pickProvider } from './model.js';
 
 export type ProviderName = 'openrouter' | 'google' | 'vertex' | 'zhipu';
 
@@ -28,12 +28,10 @@ function mergeEnv(envSource: Record<string, unknown> = {}): Env {
   return env;
 }
 
-/** Must mirror getAgentModel's provider selection exactly. */
+/** Must mirror getAgentModel's provider selection exactly — delegates to
+ *  `pickProvider` (dynamic: SA present → vertex/trial credits; else openrouter). */
 export function detectActiveProvider(env: Env): ProviderName {
-  const provider = (env.GENAI_PROVIDER || 'openrouter').toLowerCase();
-  if (provider === 'openrouter' || env.OPENROUTER_API_KEY) return 'openrouter';
-  if (provider === 'vertex' || env.GOOGLE_GENAI_USE_VERTEXAI === 'true') return 'vertex';
-  return 'google';
+  return pickProvider(env);
 }
 
 async function checkOpenRouter(key?: string): Promise<ProviderState> {
@@ -67,26 +65,25 @@ async function checkGoogle(key?: string): Promise<ProviderState> {
 }
 
 function checkVertex(env: Env): ProviderState {
-  const expressKey = env.GOOGLE_VERTEX_API_KEY; // Express mode (API key, no SA)
-  const creds = resolveVertexCredentials(env); // SA JSON or split fields
+  const creds = resolveVertexCredentials(env); // SA JSON (inline/path) or split fields
   const project = env.GOOGLE_CLOUD_PROJECT || env.GOOGLE_VERTEX_PROJECT;
 
-  if (!expressKey && !creds) return { configured: false, reachable: false };
-  // SA mode needs a project; Express mode (API key) does not.
-  if (!expressKey && !project) {
+  if (!creds) return { configured: false, reachable: false };
+  if (!project) {
     return { configured: true, reachable: false, error: 'GOOGLE_CLOUD_PROJECT missing' };
   }
   // We intentionally do NOT run an independent token exchange here: the /edge
   // provider signs the SA JWT with WebCrypto, and duplicating that signing in
-  // the health check isn't worth it. Treat credentials-present as optimistically
+  // the health check isn't worth it. Treat SA-present as optimistically
   // reachable; the first real generation request surfaces any auth failure via
-  // the UI onError path.
+  // the UI onError path. (Service account is the ONLY Vertex auth shape — AI
+  // Studio / Express API keys are not supported.)
   return { configured: true, reachable: true };
 }
 
-/** Vertex is configured if either Express key or SA fields are present. */
+/** Vertex is configured iff a service account is resolvable from env. */
 function vertexConfigured(env: Env): boolean {
-  return !!(env.GOOGLE_VERTEX_API_KEY || resolveVertexCredentials(env));
+  return !!resolveVertexCredentials(env);
 }
 
 /**

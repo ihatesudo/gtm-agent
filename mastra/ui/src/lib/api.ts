@@ -101,7 +101,24 @@ export function formatLLMError(err: any): string {
     return `🔑 Authentication Error (401/403): Invalid or missing API key. Please check your GOOGLE_API_KEY / OPENROUTER_API_KEY settings in .env.`;
   }
 
-  // 4. Provider outage / server error (500 / 502 / 503 / 504 / network)
+  // 4. Stream / connection corruption — undici's "TypeError: unusable" lands
+  //    here. This is a client-side stream-body failure (body consumed twice,
+  //    aborted, reset), NOT an upstream outage, so it gets its own message
+  //    rather than leaking the raw TypeError or being mislabeled as 5xx.
+  if (
+    lower.includes('unusable') ||
+    lower.includes('body has already been used') ||
+    lower.includes('body is locked') ||
+    lower.includes('readablestream') ||
+    lower.includes('aborted') ||
+    lower.includes('connection reset') ||
+    lower.includes('socket hang up') ||
+    lower.includes('stream error')
+  ) {
+    return `🔌 Stream Interrupted: The response stream broke mid-flight (usually a transient network blip or a token-refresh race). Please retry, or switch model.`;
+  }
+
+  // 5. Provider outage / server error (500 / 502 / 503 / 504 / network)
   if (
     lower.includes('500') ||
     lower.includes('502') ||
@@ -110,6 +127,8 @@ export function formatLLMError(err: any): string {
     lower.includes('overloaded') ||
     lower.includes('service unavailable') ||
     lower.includes('internal server error') ||
+    lower.includes('bad gateway') ||
+    lower.includes('gateway timeout') ||
     lower.includes('econnrefused') ||
     lower.includes('fetch failed')
   ) {
@@ -272,7 +291,10 @@ function parseSSE(
         console.error('[SSE] pump error:', err);
         if (!resolved) {
           resolved = true;
-          callbacks?.onError(String(err));
+          // Route through formatLLMError so undici's "TypeError: unusable"
+          // and similar stream failures get a friendly message instead of
+          // the raw "[object Object]" / "TypeError: ..." leaking to the UI.
+          callbacks?.onError(formatLLMError(err));
           resolve({ threadId });
         }
       });
