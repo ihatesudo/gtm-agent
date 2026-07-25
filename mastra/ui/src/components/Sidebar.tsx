@@ -15,6 +15,8 @@ interface Props {
   onSelectAgent: (id: string) => void;
   onNewChat: () => void;
   threads?: Thread[];
+  selectedThreadId?: string | null;
+  onSelectThread?: (id: string) => void;
   onDeleteThread?: (id: string) => void;
 }
 
@@ -33,7 +35,7 @@ const EMOJI: Record<string, string> = {
   'lifecycle-retention': '🔄',
 };
 
-export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewChat, threads, onDeleteThread }: Props) {
+export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewChat, threads, selectedThreadId, onSelectThread, onDeleteThread }: Props) {
   const [activeNav, setActiveNav] = useState('new-task');
 
   return (
@@ -122,63 +124,69 @@ export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewC
       {/* Conversation Thread History */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px' }}>
         {threads && threads.length > 0 ? (
-          threads.map(t => (
-            <div key={t.id}
-              className="thread-item"
-              style={{
-                padding: '8px 10px 8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                cursor: 'pointer',
-                fontSize: 12.5,
-                marginBottom: 2,
-                transition: 'all 0.15s ease',
-                color: 'var(--sidebar-text)',
-                lineHeight: 1.4,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 8,
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'var(--sidebar-hover)';
-                const btn = e.currentTarget.querySelector('.delete-btn') as HTMLElement;
-                if (btn) btn.style.opacity = '1';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent';
-                const btn = e.currentTarget.querySelector('.delete-btn') as HTMLElement;
-                if (btn) btn.style.opacity = '0';
-              }}
-            >
-              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{t.title}</div>
-              {onDeleteThread && (
-                <button
-                  className="delete-btn"
-                  title="Delete conversation"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteThread(t.id);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--sidebar-text-dim)',
-                    cursor: 'pointer',
-                    padding: 2,
-                    opacity: 0,
-                    transition: 'opacity 0.15s ease, color 0.15s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--sidebar-text-dim)'; }}
-                >
-                  <Icon name="trash" size={13} />
-                </button>
-              )}
-            </div>
-          ))
+          threads.map(t => {
+            const isThreadActive = selectedThreadId === t.id;
+            return (
+              <div key={t.id}
+                className="thread-item"
+                onClick={() => onSelectThread?.(t.id)}
+                style={{
+                  padding: '8px 10px 8px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  fontSize: 12.5,
+                  marginBottom: 2,
+                  transition: 'all 0.15s ease',
+                  background: isThreadActive ? 'var(--sidebar-active)' : 'transparent',
+                  color: isThreadActive ? 'var(--sidebar-accent)' : 'var(--sidebar-text)',
+                  fontWeight: isThreadActive ? 600 : 400,
+                  lineHeight: 1.4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                }}
+                onMouseEnter={e => {
+                  if (!isThreadActive) e.currentTarget.style.background = 'var(--sidebar-hover)';
+                  const btn = e.currentTarget.querySelector('.delete-btn') as HTMLElement;
+                  if (btn) btn.style.opacity = '1';
+                }}
+                onMouseLeave={e => {
+                  if (!isThreadActive) e.currentTarget.style.background = 'transparent';
+                  const btn = e.currentTarget.querySelector('.delete-btn') as HTMLElement;
+                  if (btn) btn.style.opacity = '0';
+                }}
+              >
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{t.title}</div>
+                {onDeleteThread && (
+                  <button
+                    className="delete-btn"
+                    title="Delete conversation"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteThread(t.id);
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--sidebar-text-dim)',
+                      cursor: 'pointer',
+                      padding: 2,
+                      opacity: 0,
+                      transition: 'opacity 0.15s ease, color 0.15s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--sidebar-text-dim)'; }}
+                  >
+                    <Icon name="trash" size={13} />
+                  </button>
+                )}
+              </div>
+            );
+          })
         ) : (
           <div style={{
             padding: '24px 12px',

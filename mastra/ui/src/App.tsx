@@ -32,6 +32,27 @@ function summarize(content: string): string {
   return content.length > 60 ? content.slice(0, 60) + '…' : content;
 }
 
+function loadThreadMessages(threadId: string): Message[] {
+  try {
+    const raw = localStorage.getItem(`gtmagent_thread_msgs_${threadId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveThreadMessages(threadId: string, messages: Message[]) {
+  try {
+    localStorage.setItem(`gtmagent_thread_msgs_${threadId}`, JSON.stringify(messages));
+  } catch { /* storage full */ }
+}
+
+function deleteThreadMessages(threadId: string) {
+  try {
+    localStorage.removeItem(`gtmagent_thread_msgs_${threadId}`);
+  } catch { /* ignore */ }
+}
+
 export default function App() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
@@ -50,6 +71,13 @@ export default function App() {
     });
   }, []);
 
+  // Save active thread's messages to localStorage whenever messages update
+  useEffect(() => {
+    if (threadId && messages.length > 0) {
+      saveThreadMessages(threadId, messages);
+    }
+  }, [threadId, messages]);
+
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setStreamingText('');
@@ -57,6 +85,21 @@ export default function App() {
     setIsReasoning(false);
     setThreadId(null);
   }, []);
+
+  const handleSelectThread = useCallback((id: string) => {
+    const targetThread = threads.find(t => t.id === id);
+    if (targetThread) {
+      setThreadId(id);
+      if (targetThread.agentId) {
+        setSelectedAgentId(targetThread.agentId);
+      }
+      const savedMsgs = loadThreadMessages(id);
+      setMessages(savedMsgs);
+      setStreamingText('');
+      setStreamingReasoning('');
+      setIsReasoning(false);
+    }
+  }, [threads]);
 
   const handleSend = useCallback(
     async (content: string, options?: { model?: string, thinkingMode?: string }) => {
@@ -80,7 +123,13 @@ export default function App() {
               reasoning,
               createdAt: new Date().toISOString(),
             };
-            setMessages(prev => [...prev, assistantMsg]);
+            setMessages(prev => {
+              const updated = [...prev, assistantMsg];
+              if (result.threadId) {
+                saveThreadMessages(result.threadId, updated);
+              }
+              return updated;
+            });
             setStreamingText('');
             setStreamingReasoning('');
             setIsReasoning(false);
@@ -119,6 +168,7 @@ export default function App() {
   );
 
   const handleDeleteThread = useCallback((id: string) => {
+    deleteThreadMessages(id);
     setThreads(prev => {
       const updated = prev.filter(t => t.id !== id);
       saveThreads(updated);
@@ -140,6 +190,8 @@ export default function App() {
         onSelectAgent={setSelectedAgentId}
         onNewChat={handleNewChat}
         threads={threads}
+        selectedThreadId={threadId}
+        onSelectThread={handleSelectThread}
         onDeleteThread={handleDeleteThread}
       />
       {isEmpty ? (
@@ -158,5 +210,6 @@ export default function App() {
     </div>
   );
 }
+
 
 
