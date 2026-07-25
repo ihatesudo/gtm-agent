@@ -1,4 +1,5 @@
 import { useState, useRef, type KeyboardEvent } from 'react';
+import Icon from './Icon';
 
 interface WelcomeViewProps {
   onSend: (content: string) => void;
@@ -44,7 +45,9 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.heading}>What can I do for you?</h1>
+        <p style={styles.eyebrow}>Your marketing co-pilot</p>
+        <h1 style={styles.heading}>Plan your next growth move.</h1>
+        <p style={styles.subheading}>Start with a campaign goal, audience, or channel challenge. Your team will turn it into an actionable plan.</p>
 
         <div style={styles.promptBox}>
           <textarea
@@ -58,12 +61,7 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
             style={styles.textarea}
           />
           <div style={styles.toolbar}>
-            <div style={styles.toolbarLeft}>
-              <button style={styles.toolBtn} title="Attach files">📎</button>
-              <button style={styles.toolBtn} title="Web Canvas">🔗</button>
-              <button style={styles.toolBtn} title="GTM Desktop">🖥️</button>
-              <button style={styles.toolBtn} title="Voice input">🎤</button>
-            </div>
+            <span style={styles.hint}>Enter to send · Shift + Enter for a new line</span>
             <button
               onClick={handleSend}
               disabled={!input.trim() || sending}
@@ -73,7 +71,7 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
               }}
               aria-label="Send message"
             >
-              →
+              <Icon name="arrow-up" size={18} />
             </button>
           </div>
         </div>
@@ -149,20 +147,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px 12px 10px',
     borderTop: '1px solid var(--border)',
   },
-  toolbarLeft: {
-    display: 'flex',
-    gap: 2,
-  },
-  toolBtn: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    padding: '6px 8px',
-    borderRadius: 'var(--radius-sm)',
-    fontSize: 16,
-    lineHeight: 1,
-    opacity: 0.5,
-  },
+  eyebrow: { fontSize: 12, fontWeight: 600, color: 'var(--accent-green)', letterSpacing: '0.08em', textTransform: 'uppercase' },
+  subheading: { color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.6, textAlign: 'center', maxWidth: 540, marginTop: -14 },
+  hint: { color: 'var(--text-tertiary)', fontSize: 12, paddingLeft: 8 },
   sendBtn: {
     width: 36,
     height: 36,

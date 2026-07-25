@@ -1,4 +1,5 @@
 import { Mastra } from '@mastra/core';
+import { CloudflareDeployer } from '@mastra/deployer-cloudflare';
 import { LibSQLStore } from '@mastra/libsql';
 import { directorAgent } from './agents/director.js';
 import { ALL_SPECIALIST_AGENTS } from './agents/specialists.js';
@@ -11,8 +12,41 @@ const storage = new LibSQLStore({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
+// Keep Worker-specific configuration beside the Mastra app. `mastra build`
+// uses this to generate the Worker entrypoint and Wrangler configuration.
+const deployer = new CloudflareDeployer({
+  name: 'gtm-agent-mastra',
+  compatibility_date: '2026-07-24',
+  compatibility_flags: ['nodejs_compat'],
+  assets: {
+    directory: '.mastra/output/studio',
+    not_found_handling: 'single-page-application',
+  },
+  r2_buckets: [{
+    binding: 'ASSETS_BUCKET',
+    bucket_name: 'gtm-agent-assets',
+    preview_bucket_name: 'gtm-agent-assets-preview',
+  }],
+  browser: { binding: 'BROWSER' },
+  vars: {
+    DIRECTOR_MODEL: 'google/gemini-2.5-flash',
+    SPECIALIST_MODEL: 'google/gemini-2.5-flash-lite-preview-06-17',
+  },
+});
+
 export const mastra = new Mastra({
+  deployer,
   storage,
+  // Mastra turns the incoming request's `requestContext` into the context
+  // received by every tool. Attach Worker bindings there, rather than putting
+  // them in module globals (which would leak across concurrent requests).
+  server: {
+    middleware: async (c, next) => {
+      const requestContext = c.get('requestContext') as { set: (key: string, value: unknown) => void };
+      requestContext.set('cloudflareBindings', c.env);
+      await next();
+    },
+  },
   agents: {
     directorAgent,
     ...ALL_SPECIALIST_AGENTS,

@@ -7,7 +7,7 @@ ENV_LOAD := set -a && { [ -f .env ] && . ./.env; }; set +a
 
 .PHONY: help setup auth env run agent ask role skill menu roles skills clean \
         web-dev web-deploy web-secrets \
-        mastra-dev mastra-test mastra-prd mastra-run
+        mastra-dev mastra-test mastra-prd mastra-run mastra-deploy mastra-deploy-dry-run
 
 help: ## Show this help
 	@echo "Usage: make <target>"
@@ -70,7 +70,13 @@ mastra-ui-build: ## Build custom chat UI for test/prod mode
 
 mastra-prd: ## Build for Cloudflare Workers deployment
 	@$(MASTRA) && npm run prd
-	@echo "Built. Deploy with: cd mastra && wrangler deploy"
+	@echo "Built. Deploy with: make mastra-deploy"
+
+mastra-deploy-dry-run: ## Validate the Cloudflare Worker bundle without deploying
+	@$(MASTRA) && npm run deploy:dry-run
+
+mastra-deploy: ## Build and deploy the Mastra Cloudflare Worker
+	@$(MASTRA) && npm run deploy
 
 mastra-run: ## One-shot campaign via Mastra CLI
 	@$(MASTRA) && npx tsx run.mjs

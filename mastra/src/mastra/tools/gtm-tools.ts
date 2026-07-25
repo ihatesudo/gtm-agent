@@ -1,7 +1,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
+import skillsRegistry from '../skills-registry.json';
+import { getAssetStore, type AssetStore, type R2Bucket } from '../storage/asset-store.js';
 import {
   getProject,
   saveProject,
@@ -12,20 +12,19 @@ import {
   ProjectMemory,
 } from '../memory/project-memory.js';
 
-// Skills registry — bundled at build time (see scripts/bundle-skills.mjs)
-// Falls back to filesystem for local dev if registry not yet built.
-let _skillsRegistry: Record<string, { description: string; content: string; refs: Record<string, string> }> | null = null;
-async function getSkillsRegistry() {
-  if (_skillsRegistry) return _skillsRegistry;
-  try {
-    const registryPath = new URL('./skills-registry.json', import.meta.url);
-    const raw = await import(registryPath.pathname, { assert: { type: 'json' } }).then((m: any) => m.default).catch(() => null);
-    if (raw) { _skillsRegistry = raw; return _skillsRegistry!; }
-  } catch {}
-  return null;
+type SkillsRegistry = Record<string, { description: string; content: string; refs: Record<string, string> }>;
+const registry = skillsRegistry as SkillsRegistry;
+
+function filename(value: string): string | null {
+  const name = value.split(/[\\/]/).pop()?.trim() ?? '';
+  return name && name === value ? name : null;
 }
 
-const OUTPUT_DIR = path.resolve('output');
+function requestAssetStore(context: unknown): AssetStore {
+  const requestContext = (context as { requestContext?: { get?: (key: string) => unknown } })?.requestContext;
+  const bindings = requestContext?.get?.('cloudflareBindings') as { ASSETS_BUCKET?: R2Bucket } | undefined;
+  return getAssetStore(bindings);
+}
 
 export const webSearchTool = createTool({
   id: 'web_search',
@@ -85,13 +84,11 @@ export const saveAssetTool = createTool({
   outputSchema: z.object({
     output: z.string(),
   }),
-  execute: async ({ filename, content }) => {
-    const name = path.basename(filename);
+  execute: async ({ filename: requestedFilename, content }, context) => {
+    const name = filename(requestedFilename);
     if (!name) return { output: '[Invalid filename]' };
-    await fs.mkdir(OUTPUT_DIR, { recursive: true });
-    const filePath = path.join(OUTPUT_DIR, name);
-    await fs.writeFile(filePath, content, 'utf-8');
-    return { output: `Saved to ${filePath} (${content.length} chars)` };
+    await requestAssetStore(context).put(name, content);
+    return { output: `Saved ${name} (${content.length} chars)` };
   },
 });
 
@@ -104,16 +101,11 @@ export const readAssetTool = createTool({
   outputSchema: z.object({
     output: z.string(),
   }),
-  execute: async ({ filename }) => {
-    const name = path.basename(filename);
+  execute: async ({ filename: requestedFilename }, context) => {
+    const name = filename(requestedFilename);
     if (!name) return { output: '[Invalid filename]' };
-    const filePath = path.join(OUTPUT_DIR, name);
-    try {
-      const content = await fs.readFile(filePath, 'utf-8');
-      return { output: content };
-    } catch {
-      return { output: `[File not found: ${filename}]` };
-    }
+    const content = await requestAssetStore(context).get(name);
+    return { output: content ?? `[File not found: ${requestedFilename}]` };
   },
 });
 
@@ -124,14 +116,9 @@ export const listAssetsTool = createTool({
   outputSchema: z.object({
     output: z.string(),
   }),
-  execute: async () => {
-    try {
-      const files = await fs.readdir(OUTPUT_DIR);
-      const names = files.filter(f => f !== '.gitkeep').sort();
-      return { output: names.length ? names.join('\n') : '(no saved assets yet)' };
-    } catch {
-      return { output: '(no saved assets yet)' };
-    }
+  execute: async (_input, context) => {
+    const assets = await requestAssetStore(context).list();
+    return { output: assets.length ? assets.map((asset) => asset.filename).join('\n') : '(no saved assets yet)' };
   },
 });
 
@@ -143,33 +130,8 @@ export const listSkillsTool = createTool({
     output: z.string(),
   }),
   execute: async () => {
-    const registry = await getSkillsRegistry();
-    if (registry) {
-      const lines = Object.entries(registry).map(([name, s]) => `${name} — ${s.description}`);
-      return { output: lines.length ? lines.join('\n') : '(no skills installed)' };
-    }
-    // Fallback: filesystem (local dev)
-    const skillsDir = path.resolve('skills');
-    try {
-      const entries = await fs.readdir(skillsDir, { withFileTypes: true });
-      const lines: string[] = [];
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          const skillMd = path.join(skillsDir, entry.name, 'SKILL.md');
-          try {
-            const content = await fs.readFile(skillMd, 'utf-8');
-            const descMatch = content.match(/description:\s*"([^"]+)"/);
-            const desc = descMatch ? descMatch[1] : '(no description)';
-            lines.push(`${entry.name} — ${desc}`);
-          } catch {
-            lines.push(`${entry.name} — (no SKILL.md)`);
-          }
-        }
-      }
-      return { output: lines.length ? lines.join('\n') : '(no skills installed)' };
-    } catch {
-      return { output: '(no skills installed)' };
-    }
+    const lines = Object.entries(registry).map(([name, skill]) => `${name} — ${skill.description}`);
+    return { output: lines.length ? lines.join('\n') : '(no skills installed)' };
   },
 });
 
@@ -183,45 +145,14 @@ export const readSkillReferenceTool = createTool({
   outputSchema: z.object({
     output: z.string(),
   }),
-  execute: async ({ skill_name, filename }) => {
-    const registry = await getSkillsRegistry();
-    if (registry) {
-      const skill = registry[skill_name];
-      if (!skill) return { output: `[Skill not found: ${skill_name}]` };
-      const ref = skill.refs[path.basename(filename)];
-      if (!ref) return { output: `[Reference not found: ${skill_name}/references/${filename}]` };
-      return { output: ref };
-    }
-    // Fallback: filesystem
-    const refPath = path.resolve('skills', skill_name, 'references', path.basename(filename));
-    try {
-      const content = await fs.readFile(refPath, 'utf-8');
-      return { output: content };
-    } catch {
-      return { output: `[Reference not found: ${skill_name}/references/${filename}]` };
-    }
+  execute: async ({ skill_name, filename: requestedFilename }) => {
+    const skill = registry[skill_name];
+    if (!skill) return { output: `[Skill not found: ${skill_name}]` };
+    const ref = skill.refs[filename(requestedFilename) ?? ''];
+    return { output: ref ?? `[Reference not found: ${skill_name}/references/${requestedFilename}]` };
   },
 });
 
-export const readToolGuideTool = createTool({
-  id: 'read_tool_guide',
-  description: 'Read a marketing-platform integration guide from the tools/integrations folder.',
-  inputSchema: z.object({
-    filename: z.string().describe('The guide filename, e.g. "ahrefs.md".'),
-  }),
-  outputSchema: z.object({
-    output: z.string(),
-  }),
-  execute: async ({ filename }) => {
-    const guidePath = path.resolve('tools', 'integrations', path.basename(filename));
-    try {
-      const content = await fs.readFile(guidePath, 'utf-8');
-      return { output: content };
-    } catch {
-      return { output: `[Tool guide not found: tools/integrations/${filename}]` };
-    }
-  },
-});
 
 export const getProjectContextTool = createTool({
   id: 'get_project_context',
@@ -322,7 +253,6 @@ export const ALL_GTM_TOOLS = {
   listAssetsTool,
   listSkillsTool,
   readSkillReferenceTool,
-  readToolGuideTool,
   getProjectContextTool,
   updateProjectContextTool,
   recordProjectCampaignTool,

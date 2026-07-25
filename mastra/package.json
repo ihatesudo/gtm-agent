@@ -11,7 +11,8 @@
     "test": "mastra build --studio && npm run ui:build && node .mastra/output/index.mjs",
     "ui:build": "mkdir -p .mastra/output/studio && (cd ui && npm run build) && cp -r ui/dist/* .mastra/output/studio/",
     "prd": "mastra build",
-    "deploy": "mastra build && wrangler deploy",
+    "deploy": "mastra build && npm run ui:build && wrangler deploy --config .mastra/output/wrangler.json",
+    "deploy:dry-run": "mastra build && npm run ui:build && wrangler deploy --dry-run --config .mastra/output/wrangler.json",
     "postbuild": "npm run ui:build",
     "test:smoke": "node ui/scripts/smoke-test.mjs",
     "test:smoke:live": "MASTRA_URL=http://localhost:4111 node ui/scripts/smoke-test.mjs"

@@ -1,7 +1,7 @@
 /**
  * Asset storage adapter (Decision 2: Turso metadata + R2/local blobs)
  *
- * In local dev:   stores files on disk (output/ directory) — existing behaviour
+ * In local dev:   keeps an in-memory store (suitable for the local POC)
  * In Cloudflare:  stores metadata in Turso, blobs in R2 via binding
  *
  * Usage:
@@ -10,8 +10,6 @@
  *   await store.put('file.md', 'content');
  */
 
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import { createClient } from '@libsql/client';
 
 export interface AssetMeta {
@@ -28,56 +26,46 @@ export interface AssetStore {
   delete(filename: string): Promise<void>;
 }
 
-// ─── Local filesystem adapter (dev / fallback) ──────────────────────────────
+// ─── Local in-memory adapter (dev / fallback) ───────────────────────────────
 
-function localOutputDir() {
-  return path.resolve('output');
+const localAssets = new Map<string, { content: string; meta: AssetMeta }>();
+
+function safeFilename(filename: string): string | null {
+  const name = filename.split(/[\\/]/).pop()?.trim() ?? '';
+  return name && name === filename ? name : null;
 }
 
-function makeLocalStore(): AssetStore {
+function makeMemoryStore(): AssetStore {
   return {
     async put(filename, content) {
-      const dir = localOutputDir();
-      await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(path.join(dir, filename), content, 'utf-8');
+      const name = safeFilename(filename);
+      if (!name) throw new Error('Asset filename must not contain a path');
+      const text = typeof content === 'string' ? content : new TextDecoder().decode(content);
+      localAssets.set(name, {
+        content: text,
+        meta: {
+          filename: name,
+          contentType: name.endsWith('.md') ? 'text/markdown' : 'text/plain',
+          sizeBytes: new TextEncoder().encode(text).length,
+          createdAt: new Date().toISOString(),
+        },
+      });
     },
     async get(filename) {
-      try {
-        return await fs.readFile(path.join(localOutputDir(), filename), 'utf-8');
-      } catch {
-        return null;
-      }
+      return localAssets.get(filename)?.content ?? null;
     },
     async list() {
-      try {
-        const files = await fs.readdir(localOutputDir(), { withFileTypes: true });
-        const results: AssetMeta[] = [];
-        for (const f of files) {
-          if (!f.isFile() || f.name === '.gitkeep') continue;
-          const stat = await fs.stat(path.join(localOutputDir(), f.name));
-          results.push({
-            filename: f.name,
-            contentType: f.name.endsWith('.md') ? 'text/markdown' : 'text/plain',
-            sizeBytes: stat.size,
-            createdAt: stat.birthtime.toISOString(),
-          });
-        }
-        return results;
-      } catch {
-        return [];
-      }
+      return [...localAssets.values()].map(({ meta }) => meta);
     },
     async delete(filename) {
-      try {
-        await fs.unlink(path.join(localOutputDir(), filename));
-      } catch {}
+      localAssets.delete(filename);
     },
   };
 }
 
 // ─── Cloudflare R2 + Turso adapter ─────────────────────────────────────────
 
-interface R2Bucket {
+export interface R2Bucket {
   put(key: string, value: string | ArrayBuffer | ReadableStream): Promise<void>;
   get(key: string): Promise<{ text(): Promise<string> } | null>;
   delete(key: string): Promise<void>;
@@ -157,5 +145,5 @@ export function getAssetStore(env?: { ASSETS_BUCKET?: R2Bucket }): AssetStore {
   if (env?.ASSETS_BUCKET) {
     return makeTursoR2Store(env.ASSETS_BUCKET);
   }
-  return makeLocalStore();
+  return makeMemoryStore();
 }
