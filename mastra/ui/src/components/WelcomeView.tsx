@@ -48,9 +48,11 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           <span style={styles.eyebrow}>Your marketing co-pilot</span>
-          <h1 style={styles.heading}>Plan your next growth move.</h1>
+          <h1 style={styles.heading}>
+            Plan your <span style={styles.headingEmphasis}>next growth move.</span>
+          </h1>
           <p style={styles.subheading}>Start with a campaign goal, audience, or channel challenge. Your team will turn it into an actionable plan.</p>
         </div>
 
@@ -161,13 +163,23 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 28,
   },
   heading: {
-    fontFamily: 'var(--font-serif)',
-    fontSize: 38,
+    fontFamily: 'var(--font-title, var(--font-serif))',
+    fontSize: 42,
     fontWeight: 400,
     color: 'var(--text)',
     textAlign: 'center',
-    letterSpacing: '-0.02em',
-    lineHeight: 1.15,
+    letterSpacing: '0.04em',
+    wordSpacing: '0.12em',
+    lineHeight: 1.25,
+    margin: '4px 0 2px',
+  },
+  headingEmphasis: {
+    fontFamily: 'var(--font-serif)',
+    fontStyle: 'italic',
+    fontWeight: 400,
+    color: 'var(--accent)',
+    letterSpacing: '0.04em',
+    paddingLeft: 4,
   },
   promptBox: {
     width: '100%',
