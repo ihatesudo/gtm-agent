@@ -4,30 +4,30 @@ describe('CSS design tokens', () => {
   beforeAll(() => {
     document.documentElement.style.cssText = `
       --sidebar-width: 280px;
-      --sidebar-bg: #141416;
-      --sidebar-border: #27272a;
-      --sidebar-hover: #1f1f23;
-      --sidebar-text: #e4e4e7;
-      --sidebar-text-dim: #71717a;
-      --main-bg: #fafafb;
-      --text: #18181b;
-      --text-secondary: #71717a;
-      --text-tertiary: #a1a1aa;
-      --border: #e5e5e7;
-      --surface: #ffffff;
-      --surface-hover: #f5f5f7;
-      --accent: #09090b;
-      --accent-hover: #27272a;
-      --danger: #ef4444;
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --sidebar-bg: #F5F1EB;
+      --sidebar-border: #E8E2D8;
+      --sidebar-hover: #EBE5DC;
+      --sidebar-text: #292524;
+      --sidebar-text-dim: #78716C;
+      --main-bg: #FAF7F2;
+      --text: #292524;
+      --text-secondary: #67605A;
+      --text-tertiary: #9E9790;
+      --border: #E7E2D9;
+      --surface: #FFFFFF;
+      --surface-hover: #F6F3ED;
+      --accent: #D9614E;
+      --accent-hover: #C5503D;
+      --danger: #DC2626;
+      --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-serif: 'Instrument Serif', Georgia, serif;
-      --font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
-      --radius: 10px;
-      --radius-sm: 6px;
-      --radius-lg: 14px;
-      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-      --shadow: 0 1px 3px rgba(0,0,0,0.1);
-      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+      --font-mono: 'Fira Code', 'SF Mono', monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
+      --shadow-sm: 0 1px 3px rgba(120, 113, 108, 0.05);
+      --shadow: 0 4px 12px rgba(120, 113, 108, 0.06);
+      --shadow-lg: 0 16px 32px -4px rgba(120, 113, 108, 0.12);
     `;
   });
 
@@ -49,16 +49,16 @@ describe('CSS design tokens', () => {
     });
   }
 
-  it('uses dark sidebar', () => {
-    expect(document.documentElement.style.getPropertyValue('--sidebar-bg').trim()).toBe('#141416');
+  it('uses warm light sidebar', () => {
+    expect(document.documentElement.style.getPropertyValue('--sidebar-bg').trim()).toBe('#F5F1EB');
   });
 
-  it('uses light main area', () => {
-    expect(document.documentElement.style.getPropertyValue('--main-bg').trim()).toBe('#fafafb');
+  it('uses warm light main area', () => {
+    expect(document.documentElement.style.getPropertyValue('--main-bg').trim()).toBe('#FAF7F2');
   });
 
-  it('uses black accent', () => {
-    expect(document.documentElement.style.getPropertyValue('--accent').trim()).toBe('#09090b');
+  it('uses warm terracotta accent', () => {
+    expect(document.documentElement.style.getPropertyValue('--accent').trim()).toBe('#D9614E');
   });
 
   it('defines serif font for headings', () => {
@@ -66,6 +66,6 @@ describe('CSS design tokens', () => {
   });
 
   it('defines sans font for body', () => {
-    expect(document.documentElement.style.getPropertyValue('--font-sans')).toContain('Inter');
+    expect(document.documentElement.style.getPropertyValue('--font-sans')).toContain('Plus Jakarta Sans');
   });
 });

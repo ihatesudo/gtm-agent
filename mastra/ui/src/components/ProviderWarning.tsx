@@ -28,31 +28,36 @@ export function ProviderWarning({ model }: Props) {
 
   return (
     <div style={{ 
-      color: '#d97706', // amber-600
+      color: '#B45309',
+      background: 'var(--accent-amber-bg)',
+      border: '1px solid #FDE68A',
+      borderRadius: 'var(--radius-sm)',
+      padding: '8px 12px',
       fontSize: 12, 
       display: 'flex', 
       alignItems: 'center', 
-      gap: 6, 
+      gap: 8, 
       marginBottom: 10,
-      marginTop: 2
+      marginTop: 4,
+      boxShadow: 'var(--shadow-sm)',
     }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
-        <path d="M12 9v4"></path>
-        <path d="M12 17h.01"></path>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--accent-amber)' }}>
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+        <path d="M12 9v4" />
+        <path d="M12 17h.01" />
       </svg>
       <span>
         Set{' '}
         {missingKeys.map((key, i) => (
           <React.Fragment key={key}>
             <span style={{ 
-              background: 'rgba(217, 119, 6, 0.1)', 
-              color: '#b45309',
-              padding: '2px 6px', 
-              borderRadius: 4, 
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              background: '#FEF3C7', 
+              color: '#92400E',
+              padding: '2px 8px', 
+              borderRadius: 'var(--radius-sm)', 
+              fontFamily: 'var(--font-mono)',
               fontSize: 11,
-              fontWeight: 500
+              fontWeight: 600
             }}>
               {key}
             </span>
@@ -64,3 +69,4 @@ export function ProviderWarning({ model }: Props) {
     </div>
   );
 }
+

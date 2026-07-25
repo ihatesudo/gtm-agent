@@ -16,20 +16,20 @@ export function StatusLight() {
     return () => { alive = false; clearInterval(id); };
   }, []);
 
-  let color = '#9ca3af'; // gray-400 — checking / unknown
-  let label = '正在检查连接…';
+  let color = 'var(--text-tertiary)';
+  let label = 'Checking connection…';
 
   if (status) {
     const active = status.providers[status.active];
     if (!active?.configured) {
-      color = '#9ca3af';
-      label = `${status.active}: 未配置 API key`;
+      color = 'var(--text-tertiary)';
+      label = `${status.active}: API key not set`;
     } else if (active.reachable) {
-      color = '#22c55e'; // green-500
-      label = `${status.active}: 连接正常`;
+      color = 'var(--accent-green)';
+      label = `${status.active}: Connected`;
     } else {
-      color = '#ef4444'; // red-500
-      label = `${status.active}: ${active.error || '连接失败'}`;
+      color = 'var(--danger)';
+      label = `${status.active}: ${active.error || 'Connection failed'}`;
     }
   }
 
@@ -45,8 +45,9 @@ export function StatusLight() {
         display: 'inline-block',
         flexShrink: 0,
         cursor: 'help',
-        boxShadow: `0 0 0 2px ${color}22`,
+        boxShadow: `0 0 0 3px ${color === 'var(--accent-green)' ? 'rgba(5, 150, 105, 0.2)' : 'rgba(168, 162, 158, 0.2)'}`,
       }}
     />
   );
 }
+

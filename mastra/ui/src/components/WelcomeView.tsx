@@ -48,9 +48,11 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <p style={styles.eyebrow}>Your marketing co-pilot</p>
-        <h1 style={styles.heading}>Plan your next growth move.</h1>
-        <p style={styles.subheading}>Start with a campaign goal, audience, or channel challenge. Your team will turn it into an actionable plan.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <span style={styles.eyebrow}>Your marketing co-pilot</span>
+          <h1 style={styles.heading}>Plan your next growth move.</h1>
+          <p style={styles.subheading}>Start with a campaign goal, audience, or channel challenge. Your team will turn it into an actionable plan.</p>
+        </div>
 
         <div style={styles.promptBox}>
           <textarea
@@ -63,7 +65,7 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
             disabled={sending}
             style={styles.textarea}
           />
-          <div style={{ padding: '0 12px' }}>
+          <div style={{ padding: '0 14px' }}>
             <ProviderWarning model={model} />
           </div>
           <div style={styles.toolbar}>
@@ -72,11 +74,7 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
                 value={model} 
                 onChange={(e) => setModel(e.target.value)}
                 disabled={sending}
-                style={{
-                  background: 'var(--surface-hover)', border: '1px solid var(--border)',
-                  color: 'var(--text-secondary)', fontSize: 12, padding: '6px 10px',
-                  borderRadius: 6, outline: 'none', cursor: 'pointer', fontFamily: 'inherit'
-                }}
+                style={styles.select}
               >
                 <option value="openrouter/auto">OpenRouter (Auto - Default)</option>
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash (Vertex AI)</option>
@@ -89,11 +87,7 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
                 value={thinkingMode} 
                 onChange={(e) => setThinkingMode(e.target.value)}
                 disabled={sending}
-                style={{
-                  background: 'var(--surface-hover)', border: '1px solid var(--border)',
-                  color: 'var(--text-secondary)', fontSize: 12, padding: '6px 10px',
-                  borderRadius: 6, outline: 'none', cursor: 'pointer', fontFamily: 'inherit'
-                }}
+                style={styles.select}
               >
                 <option value="none">No Thinking</option>
                 <option value="easy">Thinking: Easy</option>
@@ -101,14 +95,15 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
                 <option value="hard">Thinking: Hard</option>
               </select>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={styles.hint}>Enter to send</span>
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || sending}
                 style={{
                   ...styles.sendBtn,
-                  opacity: !input.trim() || sending ? 0.5 : 1,
+                  opacity: !input.trim() || sending ? 0.45 : 1,
+                  boxShadow: input.trim() && !sending ? '0 2px 8px rgba(217, 97, 78, 0.3)' : 'none',
                 }}
                 aria-label="Send message"
               >
@@ -126,6 +121,18 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
               disabled={sending}
               className="pill"
               style={styles.pill}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'var(--accent-light)';
+                e.currentTarget.style.borderColor = 'var(--accent)';
+                e.currentTarget.style.color = 'var(--accent)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'var(--surface)';
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.color = 'var(--text)';
+                e.currentTarget.style.transform = 'none';
+              }}
             >
               {pill.label}
             </button>
@@ -143,7 +150,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     background: 'var(--main-bg)',
-    padding: '20px',
+    padding: '32px 24px',
   },
   card: {
     width: '100%',
@@ -151,15 +158,16 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 24,
+    gap: 28,
   },
   heading: {
     fontFamily: 'var(--font-serif)',
-    fontSize: 36,
+    fontSize: 38,
     fontWeight: 400,
     color: 'var(--text)',
     textAlign: 'center',
     letterSpacing: '-0.02em',
+    lineHeight: 1.15,
   },
   promptBox: {
     width: '100%',
@@ -168,10 +176,11 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 'var(--radius-lg)',
     overflow: 'hidden',
     boxShadow: 'var(--shadow-md)',
+    transition: 'all 0.2s ease',
   },
   textarea: {
     width: '100%',
-    minHeight: 56,
+    minHeight: 64,
     maxHeight: 200,
     padding: '18px 20px 12px',
     border: 'none',
@@ -180,46 +189,79 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'transparent',
     color: 'var(--text)',
     fontSize: 15,
-    lineHeight: 1.5,
+    lineHeight: 1.55,
+    fontFamily: 'inherit',
   },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '8px 12px 10px',
-    borderTop: '1px solid var(--border)',
+    padding: '10px 14px 12px',
+    borderTop: '1px solid var(--border-light)',
+    background: 'var(--surface)',
   },
-  eyebrow: { fontSize: 12, fontWeight: 600, color: 'var(--accent-green)', letterSpacing: '0.08em', textTransform: 'uppercase' },
-  subheading: { color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.6, textAlign: 'center', maxWidth: 540, marginTop: -14 },
-  hint: { color: 'var(--text-tertiary)', fontSize: 12, paddingLeft: 8 },
+  select: {
+    background: 'var(--surface-hover)',
+    border: '1px solid var(--border)',
+    color: 'var(--text-secondary)',
+    fontSize: 12,
+    padding: '6px 12px',
+    borderRadius: 'var(--radius-sm)',
+    outline: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    fontWeight: 500,
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: 'var(--accent)',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    background: 'var(--accent-light)',
+    padding: '4px 12px',
+    borderRadius: 'var(--radius-full)',
+  },
+  subheading: {
+    color: 'var(--text-secondary)',
+    fontSize: 15,
+    lineHeight: 1.6,
+    textAlign: 'center',
+    maxWidth: 520,
+  },
+  hint: { color: 'var(--text-tertiary)', fontSize: 12, paddingLeft: 4, fontWeight: 500 },
   sendBtn: {
     width: 36,
     height: 36,
-    borderRadius: '50%',
+    borderRadius: 'var(--radius-full)',
     border: 'none',
     background: 'var(--accent)',
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 18,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'opacity 0.15s',
+    transition: 'all 0.15s ease',
   },
   pillsContainer: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
     justifyContent: 'center',
+    maxWidth: 620,
   },
   pill: {
     padding: '8px 18px',
-    borderRadius: 9999,
+    borderRadius: 'var(--radius-full)',
     border: '1px solid var(--border)',
     background: 'var(--surface)',
     color: 'var(--text)',
     fontSize: 13,
+    fontWeight: 500,
     cursor: 'pointer',
-    transition: 'background 0.15s, border-color 0.15s',
+    boxShadow: 'var(--shadow-sm)',
+    transition: 'all 0.15s ease',
   },
 };
+

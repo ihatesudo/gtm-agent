@@ -118,17 +118,29 @@ export default function App() {
     [selectedAgentId, threadId, sending],
   );
 
+  const handleDeleteThread = useCallback((id: string) => {
+    setThreads(prev => {
+      const updated = prev.filter(t => t.id !== id);
+      saveThreads(updated);
+      return updated;
+    });
+    if (threadId === id) {
+      handleNewChat();
+    }
+  }, [threadId, handleNewChat]);
+
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
   const isEmpty = messages.length === 0 && !streamingText;
 
   return (
-    <div style={{ display: 'flex', height: '100%' }}>
+    <div style={{ display: 'flex', height: '100%', width: '100%', background: 'var(--main-bg)' }}>
       <Sidebar
         agents={agents}
         selectedAgentId={selectedAgentId}
         onSelectAgent={setSelectedAgentId}
         onNewChat={handleNewChat}
         threads={threads}
+        onDeleteThread={handleDeleteThread}
       />
       {isEmpty ? (
         <WelcomeView onSend={handleSend} sending={sending} />
@@ -136,13 +148,15 @@ export default function App() {
         <ChatView
           agent={selectedAgent}
           messages={messages}
-            streamingText={streamingText}
-            streamingReasoning={streamingReasoning}
-            sending={sending}
-            isReasoning={isReasoning}
+          streamingText={streamingText}
+          streamingReasoning={streamingReasoning}
+          sending={sending}
+          isReasoning={isReasoning}
           onSend={handleSend}
         />
       )}
     </div>
   );
 }
+
+
