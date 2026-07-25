@@ -253,27 +253,24 @@ node run.mjs           # 一键生成市场活动方案
 cd mastra && npm run dev   # → http://localhost:4111
 ```
 
-### 环境配置 (`.env`)
+### 环境变量文件 (`.env`) 存放位置
 
-您可以将 `.env` 文件放置在以下任意位置（或同时放置）：
+项目支持以下两个 `.env` 文件位置：
 
-- **根目录 (`./.env`)**: 所有 `Makefile` 命令会自动加载，推荐用于 Python CLI。
-- **Mastra 子目录 (`mastra/.env`)**: `Makefile` 命令及原生 Mastra CLI 命令（`cd mastra && npm run dev`）均支持加载。
+| 存放位置 | 主要用途 | 加载方式 |
+|---|---|---|
+| **`mastra/.env`** *(推荐)* | **Mastra 引擎 & Studio UI** | `cd mastra && npm run dev` 及所有 `make` 命令均会自动加载。 |
+| **`./.env`**（根目录） | **Python CLI 命令行** | `uv run python` 及所有 `make` 命令均会自动加载。 |
 
-> 💡 **提示**: 所有 `Makefile` 命令（如 `make run`、`make dev`、`make test`、`make env` 等）会自动从 `./.env` 和 `mastra/.env` **两者**中加载环境变量。
+> 💡 **无缝兼容**：所有 `make` 命令（如 `make run`、`make dev`、`make test`、`make integration`、`make env`）均会自动检测并同时加载 `./.env` 和 `mastra/.env`。
+> 
+> 👉 **最快配置**：直接将 API 密钥写在 `mastra/.env` 中（或执行 `cp mastra/.env.example mastra/.env`）。
 
-快速配置：
+#### 核心配置项说明：
 
-```bash
-cp .env.example .env               # 根目录配置
-# 或
-cp mastra/.env.example mastra/.env   # Mastra 引擎配置
-```
-
-核心环境变量：
-- `OPENROUTER_API_KEY`: OpenRouter 模型 API 密钥。
-- `GENAI_PROVIDER`: 模型提供商选择器 (`openrouter`、`vertex` 或 `api`)。
-- `GEMINI_API_KEY`: 当 `GENAI_PROVIDER=api` 时的 Gemini API 密钥。
+- `OPENROUTER_API_KEY`: OpenRouter LLM 模型 API 密钥（默认提供者）。
+- `GENAI_PROVIDER`: 模型提供者选择（`openrouter`、`vertex` 或 `api`）。
+- `GEMINI_API_KEY`: 使用 Gemini 开发者 API 时的密钥（当 `GENAI_PROVIDER=api` 时）。
 
 
 ### Web 应用与免密登录

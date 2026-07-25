@@ -286,26 +286,23 @@ Or open the Mastra Studio for a visual chat interface:
 cd mastra && npm run dev   # → http://localhost:4111
 ```
 
-### Environment configuration (`.env`)
+### Where to place your `.env` file
 
-You can place your `.env` file in either (or both) of the following locations:
+The project supports two `.env` file locations:
 
-- **Root directory (`./.env`)**: Sourced by all `Makefile` commands and recommended for Python CLI.
-- **Mastra sub-directory (`mastra/.env`)**: Sourced by `Makefile` commands as well as native Mastra CLI commands (`cd mastra && npm run dev`).
+| Location | Primary Purpose | How it is loaded |
+|---|---|---|
+| **`mastra/.env`** *(Recommended)* | **Mastra Engine & Studio UI** | Loaded automatically by `cd mastra && npm run dev` AND all `make` commands. |
+| **`./.env`** (Root) | **Python CLI** | Loaded automatically by `uv run python` AND all `make` commands. |
 
-> 💡 **Note**: All `Makefile` commands (`make run`, `make dev`, `make test`, `make env`, etc.) automatically load variables from **both** `./.env` and `mastra/.env` if present.
+> 💡 **No conflict**: All `make` commands (`make run`, `make dev`, `make test`, `make integration`, `make env`) automatically check and load variables from **both** `./.env` and `mastra/.env`.
+> 
+> 👉 **Quickest Setup**: Put your API keys in `mastra/.env` (or run `cp mastra/.env.example mastra/.env`).
 
-To set up:
+#### Required Keys Summary:
 
-```bash
-cp .env.example .env               # Root configuration
-# OR
-cp mastra/.env.example mastra/.env   # Mastra engine configuration
-```
-
-Key environment variables:
-- `OPENROUTER_API_KEY`: API key for OpenRouter models (`openrouter/auto`, etc.).
-- `GENAI_PROVIDER`: Model provider selector (`openrouter`, `vertex`, or `api`).
+- `OPENROUTER_API_KEY`: API key for OpenRouter LLM models (default).
+- `GENAI_PROVIDER`: Model provider (`openrouter`, `vertex`, or `api`).
 - `GEMINI_API_KEY`: API key for Gemini Developer API (when `GENAI_PROVIDER=api`).
 
 
