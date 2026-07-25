@@ -7,7 +7,7 @@ ENV_LOAD := set -a && { [ -f .env ] && . ./.env; [ -f mastra/.env ] && . ./mastr
 
 .PHONY: help setup setup-deps lint auth env run agent ask role skill menu roles skills clean \
         web-dev web-deploy web-secrets \
-        dev test ui-build smoke smoke-live db-bootstrap prd campaign deploy deploy-dry-run secrets
+        dev test ui-build smoke smoke-live integration integration-live db-bootstrap prd campaign deploy deploy-dry-run secrets
 
 help: ## Show this help
 	@echo "Usage: make <target>"
@@ -106,6 +106,12 @@ smoke: ## Run SSE smoke tests (no server needed)
 
 smoke-live: ## Run live smoke tests against the local server on :4111
 	@$(ENV_LOAD); $(MASTRA) && npm run test:smoke:live
+
+integration: ## Run end-to-end chat component integration tests
+	@$(ENV_LOAD); $(MASTRA) && npm run test:integration
+
+integration-live: ## Run chat integration tests against running server on :4111
+	@$(ENV_LOAD); $(MASTRA) && npm run test:integration:live
 
 db-bootstrap: ## Verify remote Turso connectivity and provision GTM tables
 	@$(ENV_LOAD); $(MASTRA) && npm run db:bootstrap
