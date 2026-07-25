@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Agent } from '../types';
+import { StatusLight } from './StatusLight';
 
 interface Thread {
   id: string;
@@ -132,8 +133,11 @@ export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewC
         + New conversation
       </button>
 
-      <div style={{ padding: '10px 16px', borderTop: '1px solid var(--sidebar-border)', fontSize: 11, color: 'var(--sidebar-text-dim)', display: 'flex', justifyContent: 'space-between' }}>
-        <span>GTM Agent v0.3</span>
+      <div style={{ padding: '10px 16px', borderTop: '1px solid var(--sidebar-border)', fontSize: 11, color: 'var(--sidebar-text-dim)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <StatusLight />
+          GTM Agent v0.3
+        </span>
         <span>{agents.length} agents</span>
       </div>
     </div>

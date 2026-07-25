@@ -5,6 +5,7 @@ import { directorAgent } from './agents/director.js';
 import { ALL_SPECIALIST_AGENTS } from './agents/specialists.js';
 import { campaignWorkflow } from './workflows/campaign-workflow.js';
 import { ALL_GTM_TOOLS } from './tools/gtm-tools.js';
+import { getCachedConnectivity } from './healthCheck.js';
 
 const storage = new LibSQLStore({
   id: 'mastra-storage',
@@ -45,14 +46,9 @@ export const mastra = new Mastra({
   server: {
     middleware: async (c, next) => {
       if (c.req.path === '/api/providers/status') {
-        const env = (c.env || {}) as Record<string, string | undefined>;
-        const p = process.env;
-        return c.json({
-          google: !!(p.GOOGLE_API_KEY || p.GOOGLE_GENERATIVE_AI_API_KEY || p.GEMINI_API_KEY || p.GOOGLE_APPLICATION_CREDENTIALS || env.GOOGLE_API_KEY || env.GEMINI_API_KEY),
-          openrouter: !!(p.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY),
-          anthropic: !!(p.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY),
-          openai: !!(p.OPENAI_API_KEY || env.OPENAI_API_KEY),
-        });
+        // Real zero-token connectivity probe of the active provider
+        // (cached 60s). Merges Worker bindings over process.env.
+        return c.json(await getCachedConnectivity(c.env || {}));
       }
       const requestContext = c.get('requestContext') as { set: (key: string, value: unknown) => void };
       if (requestContext?.set) {

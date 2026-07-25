@@ -33,12 +33,12 @@ describe('ChatView', () => {
 
   it('shows typing indicator when sending and no streaming text', () => {
     render(<ChatView {...defaultProps} sending={true} isReasoning={true} />);
-    expect(screen.getByText(/analyzing/i)).toBeInTheDocument();
+    expect(screen.getByText(/thinking process/i)).toBeInTheDocument();
   });
 
   it('shows pulse dots when not reasoning', () => {
     render(<ChatView {...defaultProps} sending={true} isReasoning={false} />);
-    expect(document.querySelector('.pulse')).toBeInTheDocument();
+    expect(document.querySelector('.pulse-circle')).toBeInTheDocument();
   });
 
   it('shows streaming text with cursor', () => {
@@ -51,7 +51,7 @@ describe('ChatView', () => {
       { id: '1', role: 'assistant', content: 'The answer', reasoning: 'I need to think about this...', createdAt: '' },
     ];
     render(<ChatView {...defaultProps} messages={messages} />);
-    expect(screen.getByText(/thought process|thinking|reasoned/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /thought process/i })).toBeInTheDocument();
     expect(screen.getByText('The answer')).toBeInTheDocument();
   });
 
@@ -62,7 +62,7 @@ describe('ChatView', () => {
     render(<ChatView {...defaultProps} messages={messages} />);
     const user = userEvent.setup();
 
-    const toggle = screen.getByText(/thought process|thinking|reasoned/i);
+    const toggle = screen.getByRole('button', { name: /thought process/i });
     await user.click(toggle);
 
     expect(screen.getByText('Step by step reasoning here')).toBeInTheDocument();
@@ -83,6 +83,6 @@ describe('ChatView', () => {
     await user.type(textarea, 'Hello');
     await user.keyboard('{Enter}');
 
-    expect(onSend).toHaveBeenCalledWith('Hello');
+    expect(onSend).toHaveBeenCalledWith('Hello', expect.objectContaining({ model: expect.any(String), thinkingMode: expect.any(String) }));
   });
 });

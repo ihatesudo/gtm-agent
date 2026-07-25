@@ -35,7 +35,7 @@ export const directorAgent = new Agent({
 - Save long-form deliverables using save_asset
 - Reply in the user's language (Chinese or English)
 - Keep recommendations actionable: end with concrete next steps`,
-  model: getAgentModel('gemini-2.5-flash'),
+  model: getAgentModel('director', 'gemini-2.5-flash'),
   tools: ALL_GTM_TOOLS,
   agents: ALL_SPECIALIST_AGENTS,
   memory: new Memory({

@@ -50,7 +50,7 @@ describe('WelcomeView', () => {
     const submitBtn = screen.getByRole('button', { name: /send|submit|→/i });
     await user.click(submitBtn);
 
-    expect(onSend).toHaveBeenCalledWith('Write a blog post');
+    expect(onSend).toHaveBeenCalledWith('Write a blog post', expect.objectContaining({ model: expect.any(String), thinkingMode: expect.any(String) }));
   });
 
   it('sends custom prompt on Enter (without Shift)', async () => {
@@ -62,7 +62,7 @@ describe('WelcomeView', () => {
     await user.type(textarea, 'Hello');
     await user.keyboard('{Enter}');
 
-    expect(onSend).toHaveBeenCalledWith('Hello');
+    expect(onSend).toHaveBeenCalledWith('Hello', expect.objectContaining({ model: expect.any(String), thinkingMode: expect.any(String) }));
   });
 
   it('does not send empty prompt', async () => {

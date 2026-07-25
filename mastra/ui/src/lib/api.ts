@@ -2,6 +2,34 @@ import type { Agent, Message } from '../types';
 
 const API = '/api';
 
+export type ProviderName = 'openrouter' | 'google' | 'vertex';
+
+export interface ProviderState {
+  configured: boolean;
+  reachable: boolean;
+  error?: string;
+}
+
+export interface ConnectivityStatus {
+  active: ProviderName;
+  providers: Record<ProviderName, ProviderState>;
+  checkedAt: number;
+}
+
+export async function fetchConnectivityStatus(timeoutMs = 5000): Promise<ConnectivityStatus | null> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const res = await fetch(`${API}/providers/status`, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (res.ok) return (await res.json()) as ConnectivityStatus;
+  } catch {
+    // network/timeout — surface as "unknown" via null
+  }
+  return null;
+}
+
+// Legacy shape retained for ProviderWarning; derived from the new payload.
 export interface ProviderStatus {
   google: boolean;
   openrouter: boolean;
@@ -10,13 +38,15 @@ export interface ProviderStatus {
 }
 
 export async function fetchProviderStatus(): Promise<ProviderStatus> {
-  try {
-    const res = await fetch(`${API}/providers/status`);
-    if (res.ok) return await res.json();
-  } catch {
-    // fallback
-  }
-  return { google: false, openrouter: false, anthropic: false, openai: false };
+  const s = await fetchConnectivityStatus();
+  if (!s) return { google: false, openrouter: false, anthropic: false, openai: false };
+  return {
+    google: s.providers.google.configured,
+    openrouter: s.providers.openrouter.configured,
+    // claude/gpt models route through OpenRouter in this app; no direct keys.
+    anthropic: s.providers.openrouter.configured,
+    openai: s.providers.openrouter.configured,
+  };
 }
 
 export async function fetchAgents(retries = 6, delayMs = 800): Promise<Agent[]> {
