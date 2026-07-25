@@ -15,19 +15,19 @@ This is the smallest production-shaped deployment for a marketing teammate. It s
 4. Create a Turso database and copy its URL and auth token.
 5. Provision the application schema (safe to run repeatedly):
    ```sh
-   make mastra-db-bootstrap
+   make db-bootstrap
    ```
 6. Upload secrets from the terminal (they are never placed in `wrangler.json`):
    ```sh
-   make mastra-secrets
+   make secrets
    ```
    Required values are `GEMINI_API_KEY`, `TURSO_DATABASE_URL`, and `TURSO_AUTH_TOKEN`.
 
 ## Validate and deploy
 
 ```sh
-make mastra-deploy-dry-run
-make mastra-deploy
+make deploy-dry-run
+make deploy
 ```
 
 The build generates `mastra/.mastra/output/wrangler.json`; deployment deliberately uses this generated configuration so the Mastra Cloudflare entrypoint, static UI, Browser Run binding, and R2 binding are deployed together.

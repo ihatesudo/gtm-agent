@@ -111,7 +111,7 @@ export const mastra = new Mastra({
 ### Step 3: Bundle & Deploy
 1. Compile the app and generate the Cloudflare config:
    ```bash
-   make mastra-prd
+   make prd
    ```
 2. Upload deployment secrets (LLM keys, Turso tokens):
    ```bash

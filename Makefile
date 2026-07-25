@@ -7,7 +7,7 @@ ENV_LOAD := set -a && { [ -f .env ] && . ./.env; }; set +a
 
 .PHONY: help setup setup-deps lint auth env run agent ask role skill menu roles skills clean \
         web-dev web-deploy web-secrets \
-        mastra-dev mastra-test mastra-smoke-live mastra-db-bootstrap mastra-prd mastra-run mastra-deploy mastra-deploy-dry-run
+        dev test ui-build smoke smoke-live db-bootstrap prd campaign deploy deploy-dry-run secrets
 
 help: ## Show this help
 	@echo "Usage: make <target>"
@@ -25,13 +25,13 @@ help: ## Show this help
 	@echo "  menu      Print skill menu and exit"
 	@echo ""
 	@echo "Mastra orchestration engine:"
-	@echo "  mastra-dev     Dev mode — full Studio UI, hot reload     → :4111"
-	@echo "  mastra-test    Test mode — custom chat UI in the local Worker runtime → :4111"
-	@echo "  mastra-db-bootstrap  Verify Turso and create GTM application tables"
-	@echo "  mastra-ui-build  Build custom chat UI for test/prod mode"
-	@echo "  mastra-prd     Build for Cloudflare Workers deployment"
-	@echo "  mastra-secrets Upload secrets to Cloudflare Workers (GEMINI_API_KEY, TURSO_*)"
-	@echo "  mastra-run     One-shot campaign generation via CLI"
+	@echo "  dev            Dev mode — full Studio UI, hot reload     → :4111"
+	@echo "  test           Test mode — custom chat UI in the local Worker runtime → :4111"
+	@echo "  db-bootstrap   Verify Turso and create GTM application tables"
+	@echo "  ui-build       Build custom chat UI for test/prod mode"
+	@echo "  prd            Build for Cloudflare Workers deployment"
+	@echo "  secrets        Upload secrets to Cloudflare Workers (GEMINI_API_KEY, TURSO_*)"
+	@echo "  campaign       One-shot campaign generation via CLI"
 	@echo ""
 	@echo "Cloudflare Workers (deployment):"
 	@echo "  web-dev      Run the Workers dev server locally (port 8787)"
@@ -79,43 +79,43 @@ run agent: ## Interactive REPL (Python CLI)
 
 MASTRA = cd mastra
 
-mastra-dev: ## Dev mode — full Studio UI with root .env loaded (port 4111)
+dev: ## Dev mode — full Studio UI with root .env loaded (port 4111)
 	@$(ENV_LOAD); $(MASTRA) && npm run dev
 
-mastra-test: ## Start production-like custom UI with root .env loaded (port 4111)
+test: ## Start production-like custom UI with root .env loaded (port 4111)
 	@$(ENV_LOAD); $(MASTRA) && npm run test
 
-mastra-ui-build: ## Build custom chat UI for test/prod mode
+ui-build: ## Build custom chat UI for test/prod mode
 	@$(MASTRA) && npm run ui:build
 
-mastra-prd: ## Build for Cloudflare Workers deployment
+prd: ## Build for Cloudflare Workers deployment
 	@$(MASTRA) && npm run prd
-	@echo "Built. Deploy with: make mastra-deploy"
+	@echo "Built. Deploy with: make deploy"
 
-mastra-deploy-dry-run: ## Validate the Cloudflare Worker bundle without deploying
+deploy-dry-run: ## Validate the Cloudflare Worker bundle without deploying
 	@$(MASTRA) && npm run deploy:dry-run
 
-mastra-deploy: ## Build and deploy the Mastra Cloudflare Worker
+deploy: ## Build and deploy the Mastra Cloudflare Worker
 	@$(MASTRA) && npm run deploy
 
-mastra-run: ## One-shot campaign via Mastra CLI
+campaign: ## One-shot campaign via Mastra CLI
 	@$(MASTRA) && npx tsx run.mjs
 
-mastra-smoke: ## Run SSE smoke tests (no server needed)
+smoke: ## Run SSE smoke tests (no server needed)
 	@$(MASTRA) && npm run test:smoke
 
-mastra-smoke-live: ## Run live smoke tests against the local server on :4111
+smoke-live: ## Run live smoke tests against the local server on :4111
 	@$(ENV_LOAD); $(MASTRA) && npm run test:smoke:live
 
-mastra-db-bootstrap: ## Verify remote Turso connectivity and provision GTM tables
+db-bootstrap: ## Verify remote Turso connectivity and provision GTM tables
 	@$(ENV_LOAD); $(MASTRA) && npm run db:bootstrap
 
-mastra-secrets: ## Upload Cloudflare Workers secrets for the Mastra deployment
+secrets: ## Upload Cloudflare Workers secrets for the Mastra deployment
 	@echo "Uploading secrets for gtm-agent-mastra worker..."
 	@cd mastra && npx wrangler secret put GEMINI_API_KEY
 	@cd mastra && npx wrangler secret put TURSO_DATABASE_URL
 	@cd mastra && npx wrangler secret put TURSO_AUTH_TOKEN
-	@echo "Done. Run 'make mastra-prd' then 'cd mastra && npx wrangler deploy'."
+	@echo "Done. Run 'make prd' then 'cd mastra && npx wrangler deploy'."
 
 # ─── Web/Workers targets ──────────────────────────────────────────────
 

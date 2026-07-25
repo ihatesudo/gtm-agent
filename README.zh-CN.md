@@ -420,19 +420,19 @@ mastra/src/mastra/tools/gtm-tools.ts           包装 Python 工具的 Mastra �
 cd mastra
 cp .env.example .env   # 设置 OPENROUTER_API_KEY
 
-make mastra-dev        # Dev:  完整 Studio UI + 热重载        → :4111
-make mastra-test       # Test: 构建后的 Studio，类生产环境     → :4111
-make mastra-prd        # Prd:  构建，准备部署 Cloudflare
+make dev              # Dev:  完整 Studio UI + 热重载        → :4111
+make test             # Test: 构建后的 Studio，类生产环境     → :4111
+make prd              # Prd:  构建，准备部署 Cloudflare
 
 node run.mjs           # 一键生成活动方案
-# 或：make mastra-run
+# 或：make campaign
 ```
 
 | 模式 | 命令 | 说明 |
 |------|------|------|
-| **dev** | `make mastra-dev` (或 `npm run dev`) | 完整 Studio — agent 管理、工作流、工具、记忆、活动面板。热重载。 |
-| **test** | `make mastra-test` (或 `npm run test`) | 同一个 Studio，但生产构建——无 dev 工具条、无热重载。更干净、更快。 |
-| **prd** | `make mastra-prd` (或 `npm run prd`) | 仅构建——产出 `.mastra/output/` 用于部署到 Cloudflare Workers。 |
+| **dev** | `make dev` (或 `npm run dev`) | 完整 Studio — agent 管理、工作流、工具、记忆、活动面板。热重载。 |
+| **test** | `make test` (或 `npm run test`) | 同一个 Studio，但生产构建——无 dev 工具条、无热重载。更干净、更快。 |
+| **prd** | `make prd` (或 `npm run prd`) | 仅构建——产出 `.mastra/output/` 用于部署到 Cloudflare Workers。 |
 
 Mastra 引擎通过一个薄的桥接层在底层调用同样的 Python 工具 CLI。新功能开发在 Mastra 中进行；Python CLI 为习惯终端的用户继续维护。
 

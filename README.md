@@ -497,19 +497,19 @@ mastra/package.json                           Scripts: dev / test / prd
 cd mastra
 cp .env.example .env   # set OPENROUTER_API_KEY
 
-make mastra-dev        # Dev:  full Studio UI + hot reload      → :4111
-make mastra-test       # Test: built Studio, production-like     → :4111
-make mastra-prd        # Prd:  build for Cloudflare deployment
+make dev              # Dev:  full Studio UI + hot reload      → :4111
+make test             # Test: built Studio, production-like     → :4111
+make prd              # Prd:  build for Cloudflare deployment
 
 node run.mjs           # one-shot campaign generation via CLI
-# or: make mastra-run
+# or: make campaign
 ```
 
 | Mode | Command | What you get |
 |------|---------|-------------|
-| **dev** | `make mastra-dev` (or `npm run dev`) | Full Mastra Studio — agent management, workflow monitoring, tools, memory, campaign builder. Hot reload. |
-| **test** | `make mastra-test` (or `npm run test`) | Same Studio UI but production-built — no dev overlays, no hot-reload chrome. Cleaner, faster. |
-| **prd** | `make mastra-prd` (or `npm run prd`) | Build only — produces `.mastra/output/` for Cloudflare Workers deploy. |
+| **dev** | `make dev` (or `npm run dev`) | Full Mastra Studio — agent management, workflow monitoring, tools, memory, campaign builder. Hot reload. |
+| **test** | `make test` (or `npm run test`) | Same Studio UI but production-built — no dev overlays, no hot-reload chrome. Cleaner, faster. |
+| **prd** | `make prd` (or `npm run prd`) | Build only — produces `.mastra/output/` for Cloudflare Workers deploy. |
 
 ### Can they merge?
 
@@ -517,15 +517,15 @@ Not in the same process — one is Python, the other is TypeScript. But the **Ma
 
 For now:
 - **Want a quick terminal conversation?** → `make run`
-- **Want campaign plans, multi-turn chats, and a visual Studio?** → use the mastra-* targets
+- **Want campaign plans, multi-turn chats, and a visual Studio?** → use the Mastra targets (`dev`, `test`, `prd`, …)
 - **Want both runtimes?** → Keep them in the same repo. They share roles, skills, and tools. No duplication.
 
 | Goal | Command |
 |------|---------|
-| Full Studio dev | `make mastra-dev` |
-| Test (built, clean Studio) | `make mastra-test` |
-| Build for deploy | `make mastra-prd` |
-| One-shot campaign | `make mastra-run` |
+| Full Studio dev | `make dev` |
+| Test (built, clean Studio) | `make test` |
+| Build for deploy | `make prd` |
+| One-shot campaign | `make campaign` |
 
 ## Housekeeping
 
