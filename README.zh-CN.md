@@ -434,6 +434,18 @@ node run.mjs           # 一键生成活动方案
 | **test** | `make test` (或 `npm run test`) | 同一个 Studio，但生产构建——无 dev 工具条、无热重载。更干净、更快。 |
 | **prd** | `make prd` (或 `npm run prd`) | 仅构建——产出 `.mastra/output/` 用于部署到 Cloudflare Workers。 |
 
+### 模型选择（UI 下拉）
+
+Mastra UI 的模型选择器路由到**三个相互独立的 provider**——按你在 `.env` 里配的 key 选。它们刻意分开，不共享额度：
+
+| 选项 | Provider | 何时用 / 为什么 |
+|------|----------|---------------|
+| **Gemini 2.5 Flash / Pro** | Vertex AI（`/edge`，service account） | 消耗你的 **GCP 额度**——用 Gemini 模型的路径。 |
+| **OpenRouter (Auto)** | OpenRouter | 免费模型；一个 key（`OPENROUTER_API_KEY`）就够。 |
+| **GLM-5.2** | 智谱 Coding Plan（OpenAI 兼容） | 用你自己的智谱 key（`ZHIPU_API_KEY`）。走 OpenAI 兼容端点——GLM 官方支持最好的 SDK 形态。 |
+
+选择按请求发送（`modelChoice`），经 `requestContext` 贯穿，所以链路上每个 agent（Director + 各 specialist）都遵循它。Gemini 烧 GCP 配额、OpenRouter 用免费模型、GLM 用你的智谱订阅——互不挪用。
+
 Mastra 引擎通过一个薄的桥接层在底层调用同样的 Python 工具 CLI。新功能开发在 Mastra 中进行；Python CLI 为习惯终端的用户继续维护。
 
 ### 能合并吗？
