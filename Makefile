@@ -3,7 +3,7 @@ SHELL := /bin/sh
 
 PY := uv run python
 WRK := cd workers/backend
-ENV_LOAD := set -a && { [ -f .env ] && . ./.env; }; set +a
+ENV_LOAD := set -a && { [ -f .env ] && . ./.env; [ -f mastra/.env ] && . ./mastra/.env; true; }; set +a
 
 .PHONY: help setup setup-deps lint auth env run agent ask role skill menu roles skills clean \
         web-dev web-deploy web-secrets \
