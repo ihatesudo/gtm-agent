@@ -37,7 +37,15 @@ function summarize(content: string): string {
 function loadThreadMessages(threadId: string): Message[] {
   try {
     const raw = localStorage.getItem(`gtmagent_thread_msgs_${threadId}`);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const msgs: Message[] = JSON.parse(raw);
+    return msgs.filter(m => {
+      if (m.role === 'user') return true;
+      const hasContent = Boolean(m.content && m.content.trim().length > 0);
+      const hasReasoning = Boolean(m.reasoning && m.reasoning.trim().length > 0);
+      const hasToolCalls = Boolean(m.toolCalls && m.toolCalls.length > 0);
+      return hasContent || hasReasoning || hasToolCalls;
+    });
   } catch {
     return [];
   }
@@ -146,20 +154,28 @@ export default function App() {
           onFinish: (fullText, reasoning, streamThreadId) => {
             const finalToolCalls = currentToolCallsRef.current;
             currentToolCallsRef.current = [];
-            const assistantMsg: Message = {
-              id: 'a-' + Date.now(),
-              role: 'assistant',
-              content: fullText,
-              reasoning,
-              toolCalls: finalToolCalls.length > 0 ? finalToolCalls : undefined,
-              createdAt: new Date().toISOString(),
-            };
+
+            const hasContent = Boolean(fullText && fullText.trim().length > 0);
+            const hasReasoning = Boolean(reasoning && reasoning.trim().length > 0);
+            const hasToolCalls = Boolean(finalToolCalls && finalToolCalls.length > 0);
+
             const targetTid = streamThreadId || activeThreadId;
-            setMessages(msgs => {
-              const updated = [...msgs, assistantMsg];
-              saveThreadMessages(targetTid, updated);
-              return updated;
-            });
+
+            if (hasContent || hasReasoning || hasToolCalls) {
+              const assistantMsg: Message = {
+                id: 'a-' + Date.now(),
+                role: 'assistant',
+                content: fullText,
+                reasoning,
+                toolCalls: hasToolCalls ? finalToolCalls : undefined,
+                createdAt: new Date().toISOString(),
+              };
+              setMessages(msgs => {
+                const updated = [...msgs, assistantMsg];
+                saveThreadMessages(targetTid, updated);
+                return updated;
+              });
+            }
             setStreamingToolCalls([]);
             setStreamingText('');
             setStreamingReasoning('');

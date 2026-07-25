@@ -11,6 +11,7 @@
 function parseSSEStream(chunks, callbacks = {}) {
   return new Promise((resolve) => {
     let accumulated = '';
+    let accumulatedReasoning = '';
     let resolved = false;
     let buffer = '';
 
@@ -21,7 +22,7 @@ function parseSSEStream(chunks, callbacks = {}) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
           if (data === '[DONE]') {
-            if (!resolved) { resolved = true; callbacks.onFinish?.(accumulated); resolve({ threadId: 'test' }); }
+            if (!resolved) { resolved = true; callbacks.onFinish?.(accumulated, accumulatedReasoning); resolve({ threadId: 'test' }); }
             return;
           }
           try {
@@ -30,10 +31,30 @@ function parseSSEStream(chunks, callbacks = {}) {
             if (type === 'text-delta' || type === 'text') {
               const delta = parsed.payload?.text || parsed.text || parsed.content || '';
               if (delta) { accumulated += delta; callbacks.onText?.(accumulated); }
-            } else if (type === 'reasoning-delta') {
-              callbacks.onReasoning?.();
+            } else if (type === 'reasoning-delta' || type === 'reasoning') {
+              const rDelta = parsed.payload?.text || parsed.payload?.reasoning || parsed.text || parsed.reasoning || '';
+              if (rDelta) { accumulatedReasoning += rDelta; callbacks.onReasoning?.(accumulatedReasoning); }
+            } else if (type === 'step-finish' || type === 'tool-call' || type === 'tool_call' || type === 'tool-result' || type === 'tool_result') {
+              const rawToolCalls =
+                parsed.payload?.stepResult?.output?.toolCalls ||
+                parsed.payload?.stepResult?.toolCalls ||
+                parsed.payload?.toolCalls ||
+                parsed.stepResult?.output?.toolCalls ||
+                parsed.stepResult?.toolCalls ||
+                parsed.toolCalls ||
+                (parsed.payload?.toolName || parsed.toolName || parsed.payload?.tool || parsed.tool ? [parsed.payload || parsed] : null);
+
+              if (rawToolCalls && Array.isArray(rawToolCalls)) {
+                for (const tc of rawToolCalls) {
+                  callbacks.onToolCall?.({
+                    tool: tc.toolName || tc.tool || tc.name || 'unknown',
+                    input: typeof (tc.arguments || tc.args || tc.input) === 'string' ? (tc.arguments || tc.args || tc.input) : JSON.stringify(tc.arguments || tc.args || tc.input || {}),
+                    output: tc.result || tc.output ? String(tc.result || tc.output) : undefined,
+                  });
+                }
+              }
             } else if (type === 'finish' || type === 'complete' || type === 'done' || type === 'text-end') {
-              if (!resolved) { resolved = true; callbacks.onFinish?.(accumulated); resolve({ threadId: 'test' }); }
+              if (!resolved) { resolved = true; callbacks.onFinish?.(accumulated, accumulatedReasoning); resolve({ threadId: 'test' }); }
               return;
             } else if (type === 'error') {
               callbacks.onError?.(parsed.error?.message || parsed.error || 'Stream error');
@@ -139,6 +160,39 @@ console.log('\n[Test 6] error event');
     onFinish: () => {},
   });
   assert(errMsg === 'API quota exceeded', 'error message: ' + errMsg);
+}
+
+// Test 7: tool-call event parsing
+console.log('\n[Test 7] tool-call parsing');
+{
+  const toolCalls = [];
+  await parseSSEStream([
+    'data: {"type":"step-finish","payload":{"stepResult":{"output":{"toolCalls":[{"toolName":"web_search","args":{"query":"Notion teardown"}}]}}}}\n\ndata: {"type":"finish"}\n\n',
+  ], {
+    onToolCall: (tc) => { toolCalls.push(tc); },
+  });
+  assert(toolCalls.length === 1, 'tool call captured');
+  assert(toolCalls[0]?.tool === 'web_search', 'tool name: ' + toolCalls[0]?.tool);
+}
+
+// Test 8: empty assistant message filtering helper
+console.log('\n[Test 8] filtering empty assistant messages');
+{
+  const rawMsgs = [
+    { id: '1', role: 'user', content: 'Hello' },
+    { id: '2', role: 'assistant', content: '', reasoning: '', toolCalls: [] },
+    { id: '3', role: 'assistant', content: '    ' },
+    { id: '4', role: 'assistant', content: 'Actual response' },
+  ];
+  const filtered = rawMsgs.filter(m => {
+    if (m.role === 'user') return true;
+    const hasContent = Boolean(m.content && m.content.trim().length > 0);
+    const hasReasoning = Boolean(m.reasoning && m.reasoning.trim().length > 0);
+    const hasToolCalls = Boolean(m.toolCalls && m.toolCalls.length > 0);
+    return hasContent || hasReasoning || hasToolCalls;
+  });
+  assert(filtered.length === 2, 'only valid messages retained, count=' + filtered.length);
+  assert(filtered[1].content === 'Actual response', 'valid response kept');
 }
 
 // ── Live server test (optional) ──────────────────────────────────────────

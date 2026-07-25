@@ -415,7 +415,16 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22, maxWidth: 720, margin: '0 auto' }}>
           {messages.map(msg => {
             const isUser = msg.role === 'user';
-            const isToolOnly = !isUser && (!msg.content || msg.content.trim() === '') && msg.toolCalls && msg.toolCalls.length > 0;
+            const hasContent = Boolean(msg.content && msg.content.trim().length > 0);
+            const hasReasoning = Boolean(msg.reasoning && msg.reasoning.trim().length > 0);
+            const hasToolCalls = Boolean(msg.toolCalls && msg.toolCalls.length > 0);
+
+            if (!isUser && !hasContent && !hasReasoning && !hasToolCalls) {
+              return null;
+            }
+
+            const isToolOnly = !isUser && !hasContent && hasToolCalls;
+
             return (
               <div key={msg.id} style={{ display: 'flex', gap: 12, flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
                 <div style={{
@@ -435,47 +444,44 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
                   <Icon name={isUser ? 'user' : (agent?.id === 'director' ? 'target' : 'bot')} size={16} />
                 </div>
                 <div style={{ maxWidth: '85%', position: 'relative', minWidth: 0 }}>
-                  {!isUser && msg.reasoning && (
-                    <ReasoningAccordion text={msg.reasoning} />
+                  {!isUser && hasReasoning && (
+                    <ReasoningAccordion text={msg.reasoning!} />
                   )}
                   {isToolOnly ? (
-                    <div style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 6,
-                      padding: '6px 0',
-                    }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '6px 0' }}>
                       {msg.toolCalls!.map(tc => (
                         <ToolCallBadge key={tc.id} call={tc} />
                       ))}
                     </div>
                   ) : (
-                    <div style={{
-                      background: isUser ? 'var(--accent-gradient)' : 'var(--surface)',
-                      border: isUser ? 'none' : '1px solid var(--border)',
-                      borderRadius: 'var(--radius)',
-                      borderTopRightRadius: isUser ? 4 : 'var(--radius)',
-                      borderTopLeftRadius: isUser ? 'var(--radius)' : 4,
-                      padding: '12px 18px',
-                      fontSize: 14.5,
-                      lineHeight: 1.65,
-                      color: isUser ? '#ffffff' : 'var(--text)',
-                      boxShadow: isUser ? '0 3px 12px rgba(217, 97, 78, 0.2)' : 'var(--shadow-sm)',
-                    }}>
-                      {!isUser && msg.toolCalls && msg.toolCalls.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border-light)' }}>
-                          {msg.toolCalls.map(tc => (
-                            <ToolCallBadge key={tc.id} call={tc} />
-                          ))}
-                        </div>
-                      )}
-                      <FormattedMessage content={msg.content} isUser={isUser} />
-                      {!isUser && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, paddingTop: 6, borderTop: '1px solid var(--border-light)' }}>
-                          <CopyButton text={msg.content} label="Copy response" />
-                        </div>
-                      )}
-                    </div>
+                    hasContent && (
+                      <div style={{
+                        background: isUser ? 'var(--accent-gradient)' : 'var(--surface)',
+                        border: isUser ? 'none' : '1px solid var(--border)',
+                        borderRadius: 'var(--radius)',
+                        borderTopRightRadius: isUser ? 4 : 'var(--radius)',
+                        borderTopLeftRadius: isUser ? 'var(--radius)' : 4,
+                        padding: '12px 18px',
+                        fontSize: 14.5,
+                        lineHeight: 1.65,
+                        color: isUser ? '#ffffff' : 'var(--text)',
+                        boxShadow: isUser ? '0 3px 12px rgba(217, 97, 78, 0.2)' : 'var(--shadow-sm)',
+                      }}>
+                        {!isUser && hasToolCalls && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border-light)' }}>
+                            {msg.toolCalls!.map(tc => (
+                              <ToolCallBadge key={tc.id} call={tc} />
+                            ))}
+                          </div>
+                        )}
+                        <FormattedMessage content={msg.content} isUser={isUser} />
+                        {!isUser && (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, paddingTop: 6, borderTop: '1px solid var(--border-light)' }}>
+                            <CopyButton text={msg.content} label="Copy response" />
+                          </div>
+                        )}
+                      </div>
+                    )
                   )}
                 </div>
               </div>

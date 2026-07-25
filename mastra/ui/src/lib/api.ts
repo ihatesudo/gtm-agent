@@ -239,23 +239,37 @@ function parseSSE(
                 }
                 callbacks?.onText(accumulated);
               }
-            } else if (type === 'reasoning-delta') {
-              const reasoningDelta = parsed.payload?.text || '';
+            } else if (type === 'reasoning-delta' || type === 'reasoning') {
+              const reasoningDelta = parsed.payload?.text || parsed.payload?.reasoning || parsed.text || parsed.reasoning || '';
               if (reasoningDelta) {
                 accumulatedReasoning += reasoningDelta;
                 log('[#%d] reasoning-delta (+%d chars, total=%d, t=%dms)', seq, reasoningDelta.length, accumulatedReasoning.length, t.toFixed(0));
                 callbacks?.onReasoning?.(accumulatedReasoning);
               }
-            } else if (type === 'step-finish') {
-              const toolCalls = parsed.payload?.stepResult?.output?.toolCalls;
-              if (toolCalls && Array.isArray(toolCalls)) {
-                const names = toolCalls.map((tc: any) => tc.toolName || tc.tool || '?').join(', ');
-                log('[#%d] step-finish (tools: [%s], t=%dms)', seq, names, t.toFixed(0));
-                for (const tc of toolCalls) {
+            } else if (type === 'step-finish' || type === 'tool-call' || type === 'tool_call' || type === 'tool-result' || type === 'tool_result') {
+              const rawToolCalls =
+                parsed.payload?.stepResult?.output?.toolCalls ||
+                parsed.payload?.stepResult?.toolCalls ||
+                parsed.payload?.toolCalls ||
+                parsed.stepResult?.output?.toolCalls ||
+                parsed.stepResult?.toolCalls ||
+                parsed.toolCalls ||
+                (parsed.payload?.toolName || parsed.toolName || parsed.payload?.tool || parsed.tool ? [parsed.payload || parsed] : null);
+
+              if (rawToolCalls && Array.isArray(rawToolCalls)) {
+                const names = rawToolCalls.map((tc: any) => tc.toolName || tc.tool || tc.name || '?').join(', ');
+                log('[#%d] step/tool event (tools: [%s], t=%dms)', seq, names, t.toFixed(0));
+                for (const tc of rawToolCalls) {
+                  const toolName = tc.toolName || tc.tool || tc.name || 'unknown';
+                  const rawInput = tc.arguments || tc.args || tc.input || tc.parameters || {};
+                  const inputStr = typeof rawInput === 'string' ? rawInput : JSON.stringify(rawInput);
+                  const rawOutput = tc.result || tc.output;
+                  const outputStr = rawOutput !== undefined ? (typeof rawOutput === 'string' ? rawOutput : JSON.stringify(rawOutput)).slice(0, 2000) : undefined;
+
                   callbacks?.onToolCall?.({
-                    tool: tc.toolName || tc.tool || 'unknown',
-                    input: JSON.stringify(tc.arguments || tc.args || {}),
-                    output: tc.result ? JSON.stringify(tc.result).slice(0, 2000) : undefined,
+                    tool: toolName,
+                    input: inputStr,
+                    output: outputStr,
                   });
                 }
               } else {
