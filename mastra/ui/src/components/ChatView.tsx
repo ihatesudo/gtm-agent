@@ -50,7 +50,7 @@ function ReasoningAccordion({ text }: { text: string }) {
           fontSize: 10,
           display: 'inline-block',
         }}>▶</span>
-        <span>🧠</span>
+        <Icon name="brain" size={14} style={{ color: '#B45309' }} />
         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {open ? 'Thought process' : `Thought process · ${summary}${text.length > 80 ? '…' : ''}`}
         </span>
@@ -298,10 +298,10 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 18,
+          color: 'var(--accent)',
           flexShrink: 0,
         }}>
-          {agent ? agent.id === 'director' ? '🎯' : '🧑‍💼' : '?'}
+          <Icon name={agent?.id === 'director' ? 'target' : 'bot'} size={18} />
         </div>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{agent?.name || 'Select an agent'}</div>
@@ -334,13 +334,12 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 14,
                   flexShrink: 0,
                   marginTop: 2,
                   color: isUser ? '#ffffff' : 'var(--text)',
                   boxShadow: 'var(--shadow-sm)',
                 }}>
-                  {isUser ? <Icon name="user" size={16} /> : agent?.id === 'director' ? '🎯' : '🤖'}
+                  <Icon name={isUser ? 'user' : (agent?.id === 'director' ? 'target' : 'bot')} size={16} />
                 </div>
                 <div style={{ maxWidth: '85%', position: 'relative' }}>
                   {!isUser && msg.reasoning && (
@@ -382,12 +381,12 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 14,
+                color: 'var(--text)',
                 flexShrink: 0,
                 marginTop: 2,
                 boxShadow: 'var(--shadow-sm)',
               }}>
-                {agent?.id === 'director' ? '🎯' : '🤖'}
+                <Icon name={agent?.id === 'director' ? 'target' : 'bot'} size={16} />
               </div>
               <div style={{ maxWidth: '85%' }}>
                 <div style={{
@@ -422,12 +421,12 @@ export default function ChatView({ agent, messages, streamingText, streamingReas
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 14,
+                color: 'var(--text)',
                 flexShrink: 0,
                 marginTop: 2,
                 boxShadow: 'var(--shadow-sm)',
               }}>
-                {agent?.id === 'director' ? '🎯' : '🤖'}
+                <Icon name={agent?.id === 'director' ? 'target' : 'bot'} size={16} />
               </div>
               <div style={{ maxWidth: '85%' }}>
                 {streamingReasoning && (

@@ -18,6 +18,7 @@ interface Props {
   selectedThreadId?: string | null;
   onSelectThread?: (id: string) => void;
   onDeleteThread?: (id: string) => void;
+  onOpenSettings?: () => void;
 }
 
 const NAV_ITEMS: { id: string; label: string; icon: IconName }[] = [
@@ -26,16 +27,16 @@ const NAV_ITEMS: { id: string; label: string; icon: IconName }[] = [
   { id: 'library', label: 'Library', icon: 'library' },
 ];
 
-const EMOJI: Record<string, string> = {
-  director: '🎯',
-  'paid-search': '🔍',
-  'social-ads': '📱',
-  seo: '🌐',
-  'b2b-linkedin': '💼',
-  'lifecycle-retention': '🔄',
+const AGENT_ICONS: Record<string, IconName> = {
+  director: 'target',
+  'paid-search': 'search',
+  'social-ads': 'layers',
+  seo: 'globe',
+  'b2b-linkedin': 'briefcase',
+  'lifecycle-retention': 'spark',
 };
 
-export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewChat, threads, selectedThreadId, onSelectThread, onDeleteThread }: Props) {
+export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewChat, threads, selectedThreadId, onSelectThread, onDeleteThread, onOpenSettings }: Props) {
   const [activeNav, setActiveNav] = useState('new-task');
 
   return (
@@ -50,18 +51,19 @@ export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewC
       boxSizing: 'border-box',
     }}>
       {/* App Branding */}
-      <div style={{ padding: '20px 18px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+      <div style={{ padding: '20px 18px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 32,
             height: 32,
             borderRadius: 'var(--radius-sm)',
-            background: 'var(--accent-gradient)',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#ffffff',
-            boxShadow: '0 2px 8px rgba(217, 97, 78, 0.3)',
+            color: 'var(--accent)',
+            boxShadow: 'var(--shadow-sm)',
           }}>
             <Icon name="target" size={18} />
           </div>
@@ -77,6 +79,34 @@ export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewC
             <span style={{ fontSize: 11, color: 'var(--sidebar-text-dim)', fontWeight: 500 }}>Marketing team on tap</span>
           </div>
         </div>
+        {onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            title="Customization settings"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--sidebar-text-dim)',
+              cursor: 'pointer',
+              padding: 6,
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = 'var(--sidebar-text)';
+              e.currentTarget.style.background = 'var(--sidebar-hover)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--sidebar-text-dim)';
+              e.currentTarget.style.background = 'transparent';
+            }}
+          >
+            <Icon name="settings" size={16} />
+          </button>
+        )}
       </div>
 
       {/* Navigation Links */}
@@ -216,6 +246,7 @@ export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewC
         </div>
         {agents.map(agent => {
           const isSelected = agent.id === selectedAgentId;
+          const iconName = AGENT_ICONS[agent.id] || 'bot';
           return (
             <div key={agent.id} onClick={() => onSelectAgent(agent.id)}
               style={{
@@ -234,9 +265,15 @@ export default function Sidebar({ agents, selectedAgentId, onSelectAgent, onNewC
               onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 15, flexShrink: 0 }}>
-                  {EMOJI[agent.id] || '🧑‍💼'}
-                </span>
+                <Icon
+                  name={iconName}
+                  size={16}
+                  style={{
+                    color: isSelected ? 'var(--accent)' : 'var(--sidebar-text-dim)',
+                    flexShrink: 0,
+                    transition: 'color 0.15s ease',
+                  }}
+                />
                 <span style={{
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',

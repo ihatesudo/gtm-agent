@@ -5,6 +5,8 @@ import Sidebar from './components/Sidebar';
 import { WelcomeView } from './components/WelcomeView';
 import ChatView from './components/ChatView';
 
+import { SettingsModal, loadSettings, applyFontToDocument, type UserCustomization } from './components/SettingsModal';
+
 interface ThreadMeta {
   id: string;
   title: string;
@@ -63,6 +65,13 @@ export default function App() {
   const [isReasoning, setIsReasoning] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [threads, setThreads] = useState<ThreadMeta[]>(loadThreads);
+
+  const [settings, setSettings] = useState<UserCustomization>(loadSettings);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    applyFontToDocument(settings.fontStyle);
+  }, [settings.fontStyle]);
 
   useEffect(() => {
     fetchAgents().then(list => {
@@ -193,6 +202,7 @@ export default function App() {
         selectedThreadId={threadId}
         onSelectThread={handleSelectThread}
         onDeleteThread={handleDeleteThread}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
       {isEmpty ? (
         <WelcomeView onSend={handleSend} sending={sending} />
@@ -207,6 +217,12 @@ export default function App() {
           onSend={handleSend}
         />
       )}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onUpdateSettings={setSettings}
+      />
     </div>
   );
 }
