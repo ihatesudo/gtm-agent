@@ -3,40 +3,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Sidebar from '../components/Sidebar';
 
-const mockAgents = [
-  { id: 'director', name: 'GTM Director', description: 'Orchestrator' },
-  { id: 'seo', name: 'SEO Specialist', description: 'SEO expert' },
-];
-
 const defaultProps = {
-  agents: mockAgents,
-  selectedAgentId: 'director',
-  onSelectAgent: vi.fn(),
   onNewChat: vi.fn(),
 };
 
 describe('Sidebar', () => {
-  it('renders agent list', () => {
-    render(<Sidebar {...defaultProps} />);
-    expect(screen.getByText('GTM Director')).toBeInTheDocument();
-    expect(screen.getByText('SEO Specialist')).toBeInTheDocument();
-  });
-
-  it('highlights selected agent', () => {
-    render(<Sidebar {...defaultProps} selectedAgentId="seo" />);
-    const seoItem = screen.getByText('SEO Specialist').closest('div');
-    expect(seoItem?.parentElement).toBeTruthy();
-  });
-
-  it('calls onSelectAgent when an agent is clicked', async () => {
-    const onSelectAgent = vi.fn();
-    render(<Sidebar {...defaultProps} onSelectAgent={onSelectAgent} />);
-    const user = userEvent.setup();
-
-    await user.click(screen.getByText('SEO Specialist'));
-    expect(onSelectAgent).toHaveBeenCalledWith('seo');
-  });
-
   it('calls onNewChat when new conversation button is clicked', async () => {
     const onNewChat = vi.fn();
     render(<Sidebar {...defaultProps} onNewChat={onNewChat} />);

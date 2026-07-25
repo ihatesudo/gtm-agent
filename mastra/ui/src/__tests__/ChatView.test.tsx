@@ -79,7 +79,7 @@ describe('ChatView', () => {
 
   it('defaults model dropdown to OpenRouter', () => {
     render(<ChatView {...defaultProps} />);
-    const modelSelect = screen.getByDisplayValue('OpenRouter (Auto)');
+    const modelSelect = screen.getByDisplayValue('OpenRouter');
     expect(modelSelect).toBeInTheDocument();
     expect((modelSelect as HTMLSelectElement).value).toBe('openrouter');
   });

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import type { Agent } from '../types';
 import { StatusLight } from './StatusLight';
 import Icon, { type IconName } from './Icon';
 
@@ -10,9 +9,6 @@ interface Thread {
 }
 
 interface Props {
-  agents: Agent[];
-  selectedAgentId: string;
-  onSelectAgent: (id: string) => void;
   onNewChat: () => void;
   threads?: Thread[];
   selectedThreadId?: string | null;
@@ -29,19 +25,7 @@ const NAV_ITEMS: { id: string; label: string; icon: IconName }[] = [
   { id: 'library', label: 'Library', icon: 'library' },
 ];
 
-const AGENT_ICONS: Record<string, IconName> = {
-  director: 'target',
-  'paid-search': 'search',
-  'social-ads': 'layers',
-  seo: 'globe',
-  'b2b-linkedin': 'briefcase',
-  'lifecycle-retention': 'spark',
-};
-
 export default function Sidebar({
-  agents,
-  selectedAgentId,
-  onSelectAgent,
   onNewChat,
   threads,
   selectedThreadId,
@@ -299,61 +283,7 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Agents Section */}
-      <div style={{ padding: '0 10px', borderTop: '1px solid var(--sidebar-border)' }}>
-        <div style={{
-          padding: '12px 6px 6px',
-          fontSize: 11,
-          fontWeight: 700,
-          color: 'var(--sidebar-text-dim)',
-          letterSpacing: '0.05em',
-          textTransform: 'uppercase',
-        }}>
-          Agents
-        </div>
-        {agents.map(agent => {
-          const isSelected = agent.id === selectedAgentId;
-          const iconName = AGENT_ICONS[agent.id] || 'bot';
-          return (
-            <div key={agent.id} onClick={() => onSelectAgent(agent.id)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                cursor: 'pointer',
-                fontSize: 13,
-                marginBottom: 3,
-                transition: 'all 0.15s ease',
-                background: isSelected ? 'var(--surface)' : 'transparent',
-                color: isSelected ? 'var(--sidebar-text)' : 'var(--sidebar-text-dim)',
-                boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
-                border: isSelected ? '1px solid var(--border)' : '1px solid transparent',
-              }}
-              onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--sidebar-hover)'; }}
-              onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Icon
-                  name={iconName}
-                  size={16}
-                  style={{
-                    color: isSelected ? 'var(--accent)' : 'var(--sidebar-text-dim)',
-                    flexShrink: 0,
-                    transition: 'color 0.15s ease',
-                  }}
-                />
-                <span style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontWeight: isSelected ? 600 : 400,
-                }}>
-                  {agent.name}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+
 
       {/* New Conversation Button */}
       <button onClick={onNewChat}
@@ -401,7 +331,7 @@ export default function Sidebar({
           <StatusLight />
           GTM Agent v0.3
         </span>
-        <span style={{ fontWeight: 500 }}>{agents.length} agents</span>
+        <span style={{ fontWeight: 500 }}>6 agents</span>
       </div>
     </div>
   );

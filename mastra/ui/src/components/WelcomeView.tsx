@@ -2,23 +2,48 @@ import { useState, useRef, type KeyboardEvent } from 'react';
 import Icon from './Icon';
 import { ProviderWarning } from './ProviderWarning';
 
+import type { Agent } from '../types';
+
+const SHORT_AGENT: Record<string, string> = {
+  director: 'Director',
+  'paid-search': 'Paid Search',
+  'social-ads': 'Social Ads',
+  seo: 'SEO',
+  'b2b-linkedin': 'B2B LinkedIn',
+  'lifecycle-retention': 'Lifecycle',
+};
+
+const MODEL_LABEL: Record<string, string> = {
+  'gemini-flash': 'Gemini 2.5 Flash',
+  'gemini-pro': 'Gemini 2.5 Pro',
+  openrouter: 'OpenRouter',
+  glm: 'GLM-5.2',
+};
+
+function shortAgentName(agent: Agent) {
+  return SHORT_AGENT[agent.id] || agent.name;
+}
+
 interface WelcomeViewProps {
+  agents: Agent[];
+  selectedAgentId: string;
+  onSelectAgent: (id: string) => void;
   onSend: (content: string, options?: { model?: string, thinkingMode?: string }) => void;
   sending: boolean;
 }
 
 const QUICK_PILLS = [
-  { label: 'Content Strategy', prompt: 'Create a 3-month content strategy for a SaaS product launching in Q3. Include topic clusters, distribution channels, and KPI targets.' },
-  { label: 'SEO Audit', prompt: 'Run a technical SEO audit for a B2B website. List the top 10 issues to fix by priority.' },
-  { label: 'Competitor Analysis', prompt: 'Analyze top 3 competitors for an AI writing assistant. Compare features, pricing, positioning, and GTM strategy.' },
-  { label: 'Email Campaign', prompt: 'Design a 5-email welcome sequence for a new SaaS user. Include subject lines, body copy, and CTA for each email.' },
-  { label: 'Ad Copy', prompt: 'Write 5 Google Ads headlines and 3 description variations for a project management tool. Target SMB owners.' },
+  { label: 'Market Teardown', prompt: 'Analyze Notion as if it were my client. Produce a full competitive teardown: positioning, pricing, GTM motion, content gaps, and 3 high-impact recommendations with execution steps. Output as a detailed memo.' },
+  { label: 'Rewrite Landing Page', prompt: 'Rewrite the homepage hero section for a B2B SaaS that sells AI-powered contract review. Current headline: "AI for legal teams." Make it specific, benefit-driven, and include a subheadline, 3 social proof bullets, and a CTA. No follow-up questions, just output the copy.' },
+  { label: 'Cold Email Sequence', prompt: 'Write a 3-email cold outreach sequence targeting CTOs at Series A startups for a devtools company. Short, direct, no follow-up questions. Include subject lines.' },
+  { label: 'SEO Quick Wins', prompt: 'List 10 SEO quick wins for a SaaS blog that gets 5K monthly visits. Prioritize by effort vs impact. No questions, just actionable items.' },
+  { label: 'Google Ads Pack', prompt: 'Write 5 responsive search ad headlines and 3 descriptions for a project management SaaS. Target: SMB owners. No follow-ups, just the copy.' },
 ];
 
-export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
+export function WelcomeView({ agents, selectedAgentId, onSelectAgent, onSend, sending }: WelcomeViewProps) {
   const [input, setInput] = useState('');
   const [model, setModel] = useState('openrouter');
-  const [thinkingMode, setThinkingMode] = useState('medium');
+  const [thinkingMode, setThinkingMode] = useState('easy');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
@@ -40,9 +65,19 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    const el = e.target;
+    autoResize(e.target);
+  };
+
+  function autoResize(el: HTMLTextAreaElement) {
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  }
+
+  const fillPrompt = (prompt: string) => {
+    setInput(prompt);
+    requestAnimationFrame(() => {
+      if (textareaRef.current) autoResize(textareaRef.current);
+    });
   };
 
   return (
@@ -71,29 +106,40 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
             <ProviderWarning model={model} />
           </div>
           <div style={styles.toolbar}>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <select
+                value={selectedAgentId}
+                onChange={(e) => onSelectAgent(e.target.value)}
+                disabled={sending}
+                style={{ ...styles.select, fontWeight: 600, color: 'var(--text)', maxWidth: 110 }}
+              >
+                {agents.map(a => (
+                  <option key={a.id} value={a.id}>{shortAgentName(a)}</option>
+                ))}
+              </select>
+
               <select 
                 value={model} 
                 onChange={(e) => setModel(e.target.value)}
                 disabled={sending}
                 style={styles.select}
               >
-                <option value="gemini-flash">Gemini 2.5 Flash (Vertex)</option>
-                <option value="gemini-pro">Gemini 2.5 Pro (Vertex)</option>
-                <option value="openrouter">OpenRouter (Auto)</option>
-                <option value="glm">GLM-5.2 (智谱 Coding Plan)</option>
+                <option value="gemini-flash">{MODEL_LABEL['gemini-flash']}</option>
+                <option value="gemini-pro">{MODEL_LABEL['gemini-pro']}</option>
+                <option value="openrouter">{MODEL_LABEL['openrouter']}</option>
+                <option value="glm">{MODEL_LABEL['glm']}</option>
               </select>
 
               <select 
                 value={thinkingMode} 
                 onChange={(e) => setThinkingMode(e.target.value)}
                 disabled={sending}
-                style={styles.select}
+                style={{ ...styles.select, maxWidth: 82 }}
               >
-                <option value="none">No Thinking</option>
-                <option value="easy">Thinking: Easy</option>
-                <option value="medium">Thinking: Medium</option>
-                <option value="hard">Thinking: Hard</option>
+                <option value="none">No Think</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
               </select>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -118,7 +164,7 @@ export function WelcomeView({ onSend, sending }: WelcomeViewProps) {
           {QUICK_PILLS.map((pill) => (
             <button
               key={pill.label}
-              onClick={() => onSend(pill.prompt)}
+              onClick={() => fillPrompt(pill.prompt)}
               disabled={sending}
               className="pill"
               style={styles.pill}
@@ -215,13 +261,14 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--surface-hover)',
     border: '1px solid var(--border)',
     color: 'var(--text-secondary)',
-    fontSize: 12,
-    padding: '6px 12px',
+    fontSize: 11.5,
+    padding: '4px 6px',
     borderRadius: 'var(--radius-sm)',
     outline: 'none',
     cursor: 'pointer',
     fontFamily: 'inherit',
     fontWeight: 500,
+    maxWidth: 110,
   },
   eyebrow: {
     fontSize: 12,

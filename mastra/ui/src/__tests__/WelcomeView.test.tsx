@@ -3,8 +3,16 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { WelcomeView } from '../components/WelcomeView';
 
+const mockAgents = [
+  { id: 'director', name: 'GTM Director', description: 'Orchestrator' },
+  { id: 'seo', name: 'SEO Specialist', description: 'SEO expert' },
+];
+
 describe('WelcomeView', () => {
   const defaultProps = {
+    agents: mockAgents,
+    selectedAgentId: 'director',
+    onSelectAgent: vi.fn(),
     onSend: vi.fn(),
     sending: false,
   };
@@ -22,16 +30,15 @@ describe('WelcomeView', () => {
     expect(pills.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('sends predefined prompt when a pill is clicked', async () => {
-    const onSend = vi.fn();
-    render(<WelcomeView {...defaultProps} onSend={onSend} />);
+  it('fills textarea when a pill is clicked', async () => {
+    render(<WelcomeView {...defaultProps} />);
     const user = userEvent.setup();
 
-    const pill = screen.getByText('Content Strategy');
+    const pill = screen.getByText('Cold Email Sequence');
     await user.click(pill);
 
-    expect(onSend).toHaveBeenCalledTimes(1);
-    expect(onSend.mock.calls[0][0]).toContain('content strategy');
+    const textarea = screen.getByPlaceholderText(/ask me anything/i) as HTMLTextAreaElement;
+    expect(textarea.value).toContain('cold outreach');
   });
 
   it('renders textarea for custom prompt', () => {
@@ -39,9 +46,14 @@ describe('WelcomeView', () => {
     expect(screen.getByPlaceholderText(/ask me anything|type.*message|what.*want/i)).toBeInTheDocument();
   });
 
+  it('renders agent dropdown', () => {
+    render(<WelcomeView {...defaultProps} />);
+    expect(screen.getByDisplayValue('Director')).toBeInTheDocument();
+  });
+
   it('defaults model dropdown to OpenRouter', () => {
     render(<WelcomeView {...defaultProps} />);
-    const modelSelect = screen.getByDisplayValue('OpenRouter (Auto)');
+    const modelSelect = screen.getByDisplayValue('OpenRouter');
     expect(modelSelect).toBeInTheDocument();
     expect((modelSelect as HTMLSelectElement).value).toBe('openrouter');
   });
