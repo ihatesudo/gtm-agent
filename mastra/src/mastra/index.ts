@@ -44,8 +44,20 @@ export const mastra = new Mastra({
   // them in module globals (which would leak across concurrent requests).
   server: {
     middleware: async (c, next) => {
+      if (c.req.path === '/api/providers/status') {
+        const env = (c.env || {}) as Record<string, string | undefined>;
+        const p = process.env;
+        return c.json({
+          google: !!(p.GOOGLE_API_KEY || p.GOOGLE_GENERATIVE_AI_API_KEY || p.GEMINI_API_KEY || p.GOOGLE_APPLICATION_CREDENTIALS || env.GOOGLE_API_KEY || env.GEMINI_API_KEY),
+          openrouter: !!(p.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY),
+          anthropic: !!(p.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY),
+          openai: !!(p.OPENAI_API_KEY || env.OPENAI_API_KEY),
+        });
+      }
       const requestContext = c.get('requestContext') as { set: (key: string, value: unknown) => void };
-      requestContext.set('cloudflareBindings', c.env);
+      if (requestContext?.set) {
+        requestContext.set('cloudflareBindings', c.env);
+      }
       await next();
     },
   },

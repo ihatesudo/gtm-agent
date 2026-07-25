@@ -5,7 +5,7 @@ PY := uv run python
 WRK := cd workers/backend
 ENV_LOAD := set -a && { [ -f .env ] && . ./.env; }; set +a
 
-.PHONY: help setup auth env run agent ask role skill menu roles skills clean \
+.PHONY: help setup setup-deps lint auth env run agent ask role skill menu roles skills clean \
         web-dev web-deploy web-secrets \
         mastra-dev mastra-test mastra-smoke-live mastra-db-bootstrap mastra-prd mastra-run mastra-deploy mastra-deploy-dry-run
 
@@ -13,7 +13,9 @@ help: ## Show this help
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Python CLI (development):"
-	@echo "  setup     Install/sync Python dependencies (uv sync)"
+	@echo "  setup       Install/sync Python dependencies (uv sync)"
+	@echo "  setup-deps  Install Mastra npm dependencies (npm install)"
+	@echo "  lint        Check Makefile conventions (every rule documented)"
 	@echo "  auth      First-time: gcloud auth application-default login"
 	@echo "  env       Print active env vars (masked)"
 	@echo "  run       Interactive REPL"
@@ -41,6 +43,23 @@ help: ## Show this help
 
 setup: ## Install/sync Python dependencies
 	uv sync
+
+setup-deps: ## Install Mastra npm dependencies (including @ai-sdk/google-vertex)
+	@$(MASTRA) && npm install
+
+lint: ## Check Makefile conventions (every rule has a ## doc comment)
+	@printf "Linting Makefile...\n"; \
+	awk '\
+	  /^\.PHONY:/ { next } \
+	  /^[A-Za-z0-9_.-]+:/ { \
+	    if ($$0 !~ /##/) { \
+	      name=$$0; sub(/:.*/, "", name); \
+	      printf "  ✗ %s — missing \x27## doc\x27 comment\n", name; \
+	      bad=1; \
+	    } \
+	  } \
+	  END { if (!bad) printf "  ✓ all rules documented\n"; exit (bad ? 1 : 0) } \
+	' Makefile
 
 auth: ## Application Default Credentials for Vertex AI (run once)
 	@gcloud auth application-default login && echo "ADC ready."

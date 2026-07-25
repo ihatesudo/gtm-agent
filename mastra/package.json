@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.24",
+    "@ai-sdk/google-vertex": "^5.0.30",
+    "@ai-sdk/openai": "^4.0.20",
     "@libsql/client": "latest",
     "@mastra/core": "latest",
     "@mastra/deployer-cloudflare": "latest",

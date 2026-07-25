@@ -1,46 +1,67 @@
-  ### How GCP Vertex AI Auth Works: Local vs Server
+# GCP Vertex AI Deployment & Service Account Guide
 
-   Environment                      | How Authentication Works         | Requires gcloud CLI?
-  ----------------------------------|----------------------------------|----------------------------------
-   Local Machine                    | Uses Application Default         | Yes (used once locally to
-                                    | Credentials (ADC) located at     | generate ADC)
-                                    | ~/.config/gcloud/application_def |
-                                    | ault_credentials.json (created   |
-                                    | when you run gcloud auth         |
-                                    | application-default login).      |
-   Production Server (Cloudflare /  | Uses a GCP Service Account Key.  | No CLI required
-   Render / Docker / Appwrite)      | You pass the JSON key string via |
-                                    | environment variable             |
-                                    | GOOGLE_APPLICATION_CREDENTIALS.  |
-  ──────
-  ### How to Use Your $300 GCP Trial Credits on a Server (No ADC CLI Needed)
+This guide explains how to configure and deploy `gtm-agent` with **Google Cloud Vertex AI** to consume your **$300 GCP Free Trial Credits** without paying for Google AI Studio API keys.
 
-  When deploying to a server, you don't use gcloud auth. Here is how you use your GCP Trial Credits in
-  production:
+---
 
-  1. Create a Service Account in GCP Console:
-      • Go to GCP Console → IAM & Admin → Service Accounts https://console.cloud.google.com/iam-
-      admin/serviceaccounts.
-      • Click Create Service Account (e.g., mastra-agent-sa).
-      • Assign the role: Vertex AI User.
-  2. Download Key JSON:
-      • Click your new Service Account → Keys tab → Add Key → Create new key (JSON).
-  3. Set Server Environment Variables:
-  Set the following variables in your server environment (or Cloudflare / Render / .env):
-    GENAI_PROVIDER=vertex
-    GOOGLE_GENAI_USE_VERTEXAI=true
-    GOOGLE_CLOUD_PROJECT=project-babe4c82-37e1-4f22-ac0
-    GOOGLE_CLOUD_LOCATION=us-central1
-    GOOGLE_APPLICATION_CREDENTIALS={"type":"service_account","project_id":"project-babe4c82-37e1-4f22-ac0",
-  ...}
+## 1. Authentication Architecture: Local vs. Production Server
 
+| Environment | How Authentication Works | Requires `gcloud` CLI? |
+| :--- | :--- | :--- |
+| **Local Development** (Mac / PC) | Uses **Application Default Credentials (ADC)** located at `~/.config/gcloud/application_default_credentials.json`. | Yes (run once locally) |
+| **Production Server** (Cloudflare / Render / Docker / Appwrite) | Uses a **GCP Service Account Key**. Pass the JSON key string via `GOOGLE_APPLICATION_CREDENTIALS`. | **No CLI required** |
 
-  The Google SDK automatically reads GOOGLE_APPLICATION_CREDENTIALS on the server and consumes your $300
-  GCP Trial Credits without needing any gcloud CLI!
-  ──────
-  ### Summary of Recommended Options
+---
 
-  1. For GCP Trial Credits ($300): Use GENAI_PROVIDER=vertex with local ADC on Mac, and
-  GOOGLE_APPLICATION_CREDENTIALS (Service Account JSON) on your server.
-  2. For Zero-Config Simplicity: Use GENAI_PROVIDER=openrouter with OPENROUTER_API_KEY. It works
-  identically on both local and server with zero GCP Service Account setup!
+## 2. Step-by-Step: Creating a Service Account in GCP
+
+To authenticate requests on server deployments without interactive `gcloud` logins:
+
+1. **Open GCP Service Accounts**:
+   - Navigate to [GCP Console → IAM & Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts).
+
+2. **Create Service Account**:
+   - Click **Create Service Account** and name it (e.g., `mastra-agent-sa`).
+   - Assign the role **Vertex AI User** (`roles/aiplatform.user`).
+   - *(Tip: If `Vertex AI User` doesn't appear in the dropdown search, filter by Role ID `aiplatform.user`, or use `Vertex AI Administrator` / `Editor`).*
+
+3. **Generate Key JSON**:
+   - Click your new Service Account → **Keys** tab → **Add Key** → **Create new key (JSON)**.
+   - Save the downloaded `.json` key file.
+
+---
+
+## 3. Environment Configuration
+
+### Local Development (`.env`)
+Run ADC login once:
+```bash
+gcloud auth application-default login
+```
+Set in `.env`:
+```env
+GENAI_PROVIDER=vertex
+GOOGLE_GENAI_USE_VERTEXAI=true
+GOOGLE_CLOUD_PROJECT=your-project-id
+GOOGLE_CLOUD_LOCATION=us-central1
+```
+
+### Production Server Setup
+On your server (or Cloudflare / Render secrets), configure:
+```env
+GENAI_PROVIDER=vertex
+GOOGLE_GENAI_USE_VERTEXAI=true
+GOOGLE_CLOUD_PROJECT=your-project-id
+GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_APPLICATION_CREDENTIALS='{"type":"service_account","project_id":"your-project-id","private_key_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n","client_email":"mastra-agent-sa@your-project-id.iam.gserviceaccount.com",...}'
+```
+
+> 💡 **Formatting Tip**: Enclose `GOOGLE_APPLICATION_CREDENTIALS` in single quotes `'...'` as a single-line string so line breaks inside `private_key` do not break `.env` parsing.
+
+---
+
+## 4. Summary
+
+- **Local Machine**: Uses local ADC tokens (`gcloud auth application-default login`).
+- **Production Server**: Uses the Service Account JSON string in `GOOGLE_APPLICATION_CREDENTIALS`.
+- Both approaches consume your **$300 GCP Free Trial Credits** on Vertex AI seamlessly!

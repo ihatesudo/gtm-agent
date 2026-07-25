@@ -365,15 +365,14 @@ Browser → Appwrite Sites (static Reflex UI) → Render (Reflex events/WebSocke
 The older `make release` targets remain available for Reflex Cloud, but they are
 not used by this Appwrite + Render architecture.
 
+Auth is one of two paths (auto-selected by `GENAI_PROVIDER`):
+
+- **Vertex AI (default):** ADC via `gcloud auth application-default login` for local dev, or Service Account JSON key (`GOOGLE_APPLICATION_CREDENTIALS`) for production server deployment. Needs `GOOGLE_CLOUD_PROJECT` in `.env`. See [GCP Vertex AI Deployment Guide](docs/gcp.deploy.md) for step-by-step Service Account creation and $300 trial credit setup.
+- **Gemini Developer API:** set `GENAI_PROVIDER=api` and `GEMINI_API_KEY` in `.env`.
+
 > 👉 **New here?** Run `make run`, then type a real brief —
 > *"我的 SaaS 要在北美做冷启动，给我 90 天获客计划"* — and watch the Director
 > route it. Or jump straight to a specialist: `make role NAME=paid-search MSG="..."`.
-
-Auth is one of two paths (auto-selected by `GENAI_PROVIDER`):
-
-- **Vertex AI (default):** ADC via `gcloud auth application-default login`. Needs
-  `GOOGLE_CLOUD_PROJECT` in `.env`. No API key.
-- **Gemini Developer API:** set `GENAI_PROVIDER=api` and `GEMINI_API_KEY` in `.env`.
 
 ## Running the agent
 

@@ -2,6 +2,23 @@ import type { Agent, Message } from '../types';
 
 const API = '/api';
 
+export interface ProviderStatus {
+  google: boolean;
+  openrouter: boolean;
+  anthropic: boolean;
+  openai: boolean;
+}
+
+export async function fetchProviderStatus(): Promise<ProviderStatus> {
+  try {
+    const res = await fetch(`${API}/providers/status`);
+    if (res.ok) return await res.json();
+  } catch {
+    // fallback
+  }
+  return { google: false, openrouter: false, anthropic: false, openai: false };
+}
+
 export async function fetchAgents(retries = 6, delayMs = 800): Promise<Agent[]> {
   for (let i = 0; i < retries; i++) {
     try {

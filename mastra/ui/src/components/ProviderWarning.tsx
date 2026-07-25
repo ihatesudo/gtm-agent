@@ -1,22 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchProviderStatus, type ProviderStatus } from '../lib/api';
 
 interface Props {
   model: string;
 }
 
 export function ProviderWarning({ model }: Props) {
-  // For power users: In a real app, this would be wired to an API endpoint 
-  // that checks if the env variables are present. For the test UI, we can
-  // display the warnings conditionally or based on the selected model.
-  
+  const [status, setStatus] = useState<ProviderStatus | null>(null);
+
+  useEffect(() => {
+    fetchProviderStatus().then(setStatus);
+  }, []);
+
   let missingKeys: string[] = [];
-  
-  if (model.includes('gemini')) {
-    missingKeys = ['GOOGLE_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY'];
-  } else if (model.includes('claude')) {
-    missingKeys = ['ANTHROPIC_API_KEY'];
+
+  if (model.includes('claude')) {
+    if (!status || !status.anthropic) {
+      missingKeys = ['ANTHROPIC_API_KEY'];
+    }
   } else if (model.includes('gpt')) {
-    missingKeys = ['OPENAI_API_KEY'];
+    if (!status || !status.openai) {
+      missingKeys = ['OPENAI_API_KEY'];
+    }
   }
 
   if (missingKeys.length === 0) return null;
