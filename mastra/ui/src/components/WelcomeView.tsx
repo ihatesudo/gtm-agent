@@ -1,27 +1,18 @@
 import { useState, useRef, type KeyboardEvent } from 'react';
 import Icon from './Icon';
 import { ProviderWarning } from './ProviderWarning';
+import { Dropdown } from './Dropdown';
+import {
+  MODEL_OPTIONS,
+  THINKING_OPTIONS,
+  shortAgentName as shortAgentNameFor,
+  agentDetail,
+} from './selectorMetadata';
 
 import type { Agent } from '../types';
 
-const SHORT_AGENT: Record<string, string> = {
-  director: 'Director',
-  'paid-search': 'Paid Search',
-  'social-ads': 'Social Ads',
-  seo: 'SEO',
-  'b2b-linkedin': 'B2B LinkedIn',
-  'lifecycle-retention': 'Lifecycle',
-};
-
-const MODEL_LABEL: Record<string, string> = {
-  'gemini-flash': 'Gemini 2.5 Flash',
-  'gemini-pro': 'Gemini 2.5 Pro',
-  openrouter: 'OpenRouter',
-  glm: 'GLM-5.2',
-};
-
 function shortAgentName(agent: Agent) {
-  return SHORT_AGENT[agent.id] || agent.name;
+  return shortAgentNameFor(agent.name, agent.id);
 }
 
 interface WelcomeViewProps {
@@ -107,40 +98,36 @@ export function WelcomeView({ agents, selectedAgentId, onSelectAgent, onSend, se
           </div>
           <div style={styles.toolbar}>
             <div style={{ display: 'flex', gap: 6 }}>
-              <select
+              <Dropdown
+                ariaLabel="Agent"
                 value={selectedAgentId}
-                onChange={(e) => onSelectAgent(e.target.value)}
+                options={agents.map(a => ({
+                  value: a.id,
+                  label: shortAgentName(a),
+                  icon: a.id === 'director' ? 'target' : 'bot',
+                  detail: { description: agentDetail(a.id, a.description) },
+                }))}
+                onChange={(v) => onSelectAgent(v)}
                 disabled={sending}
-                style={{ ...styles.select, fontWeight: 600, color: 'var(--text)', maxWidth: 110 }}
-              >
-                {agents.map(a => (
-                  <option key={a.id} value={a.id}>{shortAgentName(a)}</option>
-                ))}
-              </select>
+                triggerWidth={100}
+              />
 
-              <select 
-                value={model} 
-                onChange={(e) => setModel(e.target.value)}
+              <Dropdown
+                ariaLabel="Model"
+                value={model}
+                options={MODEL_OPTIONS}
+                onChange={(v) => setModel(v)}
                 disabled={sending}
-                style={styles.select}
-              >
-                <option value="gemini-flash">{MODEL_LABEL['gemini-flash']}</option>
-                <option value="gemini-pro">{MODEL_LABEL['gemini-pro']}</option>
-                <option value="openrouter">{MODEL_LABEL['openrouter']}</option>
-                <option value="glm">{MODEL_LABEL['glm']}</option>
-              </select>
+              />
 
-              <select 
-                value={thinkingMode} 
-                onChange={(e) => setThinkingMode(e.target.value)}
+              <Dropdown
+                ariaLabel="Thinking mode"
+                value={thinkingMode}
+                options={THINKING_OPTIONS}
+                onChange={(v) => setThinkingMode(v)}
                 disabled={sending}
-                style={{ ...styles.select, maxWidth: 82 }}
-              >
-                <option value="none">No Think</option>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
+                triggerWidth={82}
+              />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={styles.hint}>Enter to send</span>

@@ -46,16 +46,14 @@ describe('WelcomeView', () => {
     expect(screen.getByPlaceholderText(/ask me anything|type.*message|what.*want/i)).toBeInTheDocument();
   });
 
-  it('renders agent dropdown', () => {
+  it('renders agent dropdown (Dropdown trigger shows the selected agent)', () => {
     render(<WelcomeView {...defaultProps} />);
-    expect(screen.getByDisplayValue('Director')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /agent/i })).toHaveTextContent('Director');
   });
 
-  it('defaults model dropdown to OpenRouter', () => {
+  it('defaults model dropdown to the pinned OpenRouter free model (Nemotron Ultra)', () => {
     render(<WelcomeView {...defaultProps} />);
-    const modelSelect = screen.getByDisplayValue('OpenRouter');
-    expect(modelSelect).toBeInTheDocument();
-    expect((modelSelect as HTMLSelectElement).value).toBe('openrouter');
+    expect(screen.getByRole('button', { name: /^model$/i })).toHaveTextContent('Nemotron Ultra');
   });
 
   it('sends custom prompt with default model "openrouter" on submit', async () => {

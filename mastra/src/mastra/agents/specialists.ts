@@ -16,12 +16,12 @@ export const paidSearchAgent = new Agent({
 - Search term analysis, audience targeting, remarketing lists
 - Budget allocation across campaigns and channels
 
-## When to use web_search
-Check live auction data, competitor ad copy, and latest Google Ads features before making recommendations.
+## When to use web_search and web_fetch
+Check live auction data, competitor ad copy, and latest Google Ads features before making recommendations. Use web_fetch when the user provides a specific URL.
 
 ## Output format
 Always provide: (1) specific, actionable recommendations (2) expected impact metrics (3) implementation priority.`,
-  model: modelFromChoice('specialist', 'gemini-2.5-flash-lite-preview-06-17'),
+  model: modelFromChoice('specialist', 'gemini-2.5-flash'),
   tools: ALL_GTM_TOOLS,
 });
 
@@ -39,12 +39,12 @@ export const socialAdsAgent = new Agent({
 - Retargeting funnel design and audience sequencing
 - CAC optimization and ROAS improvement
 
-## When to use web_search
-Research current ad creative trends, platform updates, and audience insights.
+## When to use web_search and web_fetch
+Research current ad creative trends, platform updates, and audience insights. Use web_fetch when the user provides a specific URL.
 
 ## Output format
 Always provide platform-specific recommendations with audience size estimates and expected CPAs.`,
-  model: modelFromChoice('specialist', 'gemini-2.5-flash-lite-preview-06-17'),
+  model: modelFromChoice('specialist', 'gemini-2.5-flash'),
   tools: ALL_GTM_TOOLS,
 });
 
@@ -63,12 +63,12 @@ export const seoAgent = new Agent({
 - AI search / AEO: optimizing for LLM and SGE visibility
 - Local SEO: Google Business Profile, local citations
 
-## When to use web_search
-Research SERP features, competitor rankings, and current SEO trends before making recommendations.
+## When to use web_search and web_fetch
+Research SERP features, competitor rankings, and current SEO trends before making recommendations. Use web_fetch when the user provides a specific URL.
 
 ## Output format
 Structure recommendations as: (1) priority/impact matrix (2) implementation steps (3) KPIs to track.`,
-  model: modelFromChoice('specialist', 'gemini-2.5-flash-lite-preview-06-17'),
+  model: modelFromChoice('specialist', 'gemini-2.5-flash'),
   tools: ALL_GTM_TOOLS,
 });
 
@@ -86,12 +86,12 @@ export const b2bLinkedinAgent = new Agent({
 - Cold email outreach strategy and copy
 - B2B funnel optimization: top-of-funnel awareness to bottom-of-funnel conversion
 
-## When to use web_search
-Research target accounts, industry trends, and competitor positioning.
+## When to use web_search and web_fetch
+Research target accounts, industry trends, and competitor positioning. Use web_fetch when the user provides a specific URL.
 
 ## Output format
 Structure as: (1) account/audience selection (2) channel-specific strategy (3) sequence/timeline (4) success metrics.`,
-  model: modelFromChoice('specialist', 'gemini-2.5-flash-lite-preview-06-17'),
+  model: modelFromChoice('specialist', 'gemini-2.5-flash'),
   tools: ALL_GTM_TOOLS,
 });
 
@@ -110,12 +110,12 @@ export const lifecycleAgent = new Agent({
 - LTV optimization: upsell, cross-sell, loyalty programs
 - Marketing automation: triggered flows, behavioral triggers, A/B testing
 
-## When to use web_search
-Research email marketing best practices, ESP features, and retention benchmarks.
+## When to use web_search and web_fetch
+Research email marketing best practices, ESP features, and retention benchmarks. Use web_fetch when the user provides a specific URL.
 
 ## Output format
 Structure as: (1) segmentation approach (2) flow/sequence design (3) trigger logic (4) metrics and targets.`,
-  model: modelFromChoice('specialist', 'gemini-2.5-flash-lite-preview-06-17'),
+  model: modelFromChoice('specialist', 'gemini-2.5-flash'),
   tools: ALL_GTM_TOOLS,
 });
 

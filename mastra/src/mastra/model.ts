@@ -16,6 +16,52 @@ export type AgentRole = 'director' | 'specialist';
 export type ModelChoice = 'gemini-flash' | 'gemini-pro' | 'openrouter' | 'glm';
 
 /**
+ * OpenRouter FREE-tier model ids (concrete `:free` slugs — NOT `openrouter/auto`,
+ * which is a paid router alias that burns credits by routing to paid models).
+ *
+ * Picked from the live `/v1/models` catalogue (filter `id.endsWith(':free')`)
+ * for models that (a) support tool calls, (b) have a large context window, and
+ * (c) are backed by a stable provider. Override the chosen slug with
+ * `OPENROUTER_MODEL` (must itself be a `:free` id, else we throw).
+ *
+ * These are intentionally pinned: relying on `auto` or a free *alias* would
+ * silently route to paid models the moment the alias target changes.
+ *
+ * Selected (2026-07 catalogue, all `:free`, all tool-capable, 256k+ context):
+ *  - nvidia/nemotron-3-ultra-550b-a55b:free   — largest (1M ctx), default choice
+ *  - nvidia/nemotron-3-super-120b-a12b:free   — fast mid-tier
+ *  - google/gemma-4-31b-it:free               — Google open-weight flagship
+ */
+export const OPENROUTER_FREE_MODELS = [
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'google/gemma-4-31b-it:free',
+] as const;
+
+/** The default free model used when no explicit OPENROUTER_MODEL override is set. */
+export const DEFAULT_OPENROUTER_FREE_MODEL = OPENROUTER_FREE_MODELS[0];
+
+/**
+ * Resolve the OpenRouter model id for this request. Honors OPENROUTER_MODEL but
+ * ONLY if it points at a `:free` slug — anything else would silently route to a
+ * paid model. Throws on a non-free override so the misconfiguration is loud.
+ */
+export function resolveOpenRouterModelId(env: Record<string, string | undefined>): string {
+  const override = (env.OPENROUTER_MODEL || '').trim();
+  if (override) {
+    if (!override.endsWith(':free')) {
+      throw new Error(
+        `OPENROUTER_MODEL="${override}" is not a free model. Set it to a ":free" slug ` +
+          `(e.g. "${DEFAULT_OPENROUTER_FREE_MODEL}"); non-free models burn credits. ` +
+          `Do NOT use "openrouter/auto" — it routes to paid models.`,
+      );
+    }
+    return override;
+  }
+  return DEFAULT_OPENROUTER_FREE_MODEL;
+}
+
+/**
  * Resolve the model id for a given role. Director and Specialist each read
  * their OWN env var, so the two roles never compete for the same fallback
  * chain. `defaultModel` only applies when the role-specific var is absent.
@@ -125,10 +171,25 @@ export function getAgentModel(role: AgentRole, defaultModel: string) {
     baseURL: 'https://openrouter.ai/api/v1',
     apiKey: env.OPENROUTER_API_KEY || '',
   });
-  // Role-specific model wins; otherwise the shared OPENROUTER_MODEL; else auto.
+  // Role-specific model wins; otherwise a concrete :free model (never auto,
+  // which routes to paid models).
   const roleModel = role === 'director' ? env.DIRECTOR_MODEL : env.SPECIALIST_MODEL;
-  const modelId = roleModel || env.OPENROUTER_MODEL || 'openrouter/auto';
+  const modelId = resolveOpenRouterModelIdFor(roleModel, env);
   return openrouter.chat(modelId);
+}
+
+/**
+ * Resolve the OpenRouter model id for the fallback path. A role-specific model
+ * (DIRECTOR_MODEL / SPECIALIST_MODEL) takes precedence; it must itself be a
+ * `:free` slug, otherwise we fall back to the default free model (rather than
+ * silently using a paid role model). Then OPENROUTER_MODEL, then the default.
+ */
+function resolveOpenRouterModelIdFor(
+  roleModel: string | undefined,
+  env: Record<string, string | undefined>,
+): string {
+  if (roleModel && roleModel.endsWith(':free')) return roleModel;
+  return resolveOpenRouterModelId(env);
 }
 
 // ─── Provider factories (reused by getAgentModel and resolveModelForChoice) ┤
@@ -192,7 +253,9 @@ export function resolveModelForChoice(
     case 'gemini-pro':
       return createVertexProvider(env)('gemini-2.5-pro');
     case 'openrouter':
-      return createOpenRouterProvider(env).chat('openrouter/auto');
+      // Concrete `:free` slug (honors OPENROUTER_MODEL if it is also :free).
+      // Never `openrouter/auto` — that's a paid router alias.
+      return createOpenRouterProvider(env).chat(resolveOpenRouterModelId(env));
     case 'glm':
       return createZhipuProvider(env).chat('glm-5.2');
     default:

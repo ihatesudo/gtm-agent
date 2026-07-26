@@ -26,4 +26,10 @@ export interface Message {
   reasoning?: string;
   toolCalls?: ToolCall[];
   createdAt: string;
+  /** Set to true when this message represents a failed response */
+  isError?: boolean;
+  /** Any text that streamed before the error occurred */
+  partialContent?: string;
+  /** Error details for a failed assistant response */
+  error?: string;
 }

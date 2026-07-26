@@ -44,7 +44,7 @@ function loadThreadMessages(threadId: string): Message[] {
       const hasContent = Boolean(m.content && m.content.trim().length > 0);
       const hasReasoning = Boolean(m.reasoning && m.reasoning.trim().length > 0);
       const hasToolCalls = Boolean(m.toolCalls && m.toolCalls.length > 0);
-      return hasContent || hasReasoning || hasToolCalls;
+      return hasContent || hasReasoning || hasToolCalls || Boolean(m.isError && m.error);
     });
   } catch {
     return [];
@@ -83,6 +83,8 @@ export default function App() {
   const [isObservabilityOpen, setIsObservabilityOpen] = useState(false);
   const [isAgentEditorOpen, setIsAgentEditorOpen] = useState(false);
   const currentToolCallsRef = useRef<ToolCall[]>([]);
+  const streamingTextRef = useRef('');
+  const streamingReasoningRef = useRef('');
 
   useEffect(() => {
     applyFontToDocument(settings.fontStyle);
@@ -109,6 +111,8 @@ export default function App() {
     setIsReasoning(false);
     setStreamingToolCalls([]);
     currentToolCallsRef.current = [];
+    streamingTextRef.current = '';
+    streamingReasoningRef.current = '';
     setThreadId(null);
   }, []);
 
@@ -126,6 +130,8 @@ export default function App() {
       setIsReasoning(false);
       setStreamingToolCalls([]);
       currentToolCallsRef.current = [];
+      streamingTextRef.current = '';
+      streamingReasoningRef.current = '';
     }
   }, [threads]);
 
@@ -136,6 +142,8 @@ export default function App() {
       setIsReasoning(false);
       currentToolCallsRef.current = [];
       setStreamingToolCalls([]);
+      streamingTextRef.current = '';
+      streamingReasoningRef.current = '';
 
       const activeThreadId = threadId || ('t-' + Date.now());
       const userMsg: Message = { id: 't-' + Date.now(), role: 'user', content, createdAt: new Date().toISOString() };
@@ -144,8 +152,8 @@ export default function App() {
       try {
         const result = await sendMessageStream(selectedAgentId, content, activeThreadId, {
           ...options,
-          onText: (text) => { setIsReasoning(false); setStreamingText(text); },
-          onReasoning: (reasoning) => { setIsReasoning(true); setStreamingReasoning(reasoning); },
+          onText: (text) => { streamingTextRef.current = text; setIsReasoning(false); setStreamingText(text); },
+          onReasoning: (reasoning) => { streamingReasoningRef.current = reasoning; setIsReasoning(true); setStreamingReasoning(reasoning); },
           onToolCall: (call) => {
             const tc: ToolCall = { id: 'tc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ...call, status: 'success' as const };
             currentToolCallsRef.current = [...currentToolCallsRef.current, tc];
@@ -179,15 +187,37 @@ export default function App() {
             setStreamingToolCalls([]);
             setStreamingText('');
             setStreamingReasoning('');
+            streamingTextRef.current = '';
+            streamingReasoningRef.current = '';
             setIsReasoning(false);
           },
-          onError: (err) => {
-            setMessages(prev => [...prev, {
-              id: 'e-' + Date.now(), role: 'assistant',
-              content: 'Error: ' + err,
+          onError: (err, partialContent, reasoning, errorThreadId) => {
+            const partial = partialContent || streamingTextRef.current;
+            const errorReasoning = reasoning || streamingReasoningRef.current;
+            const errorToolCalls = currentToolCallsRef.current;
+            const targetTid = errorThreadId || activeThreadId;
+            const errorMessage: Message = {
+              id: 'e-' + Date.now(),
+              role: 'assistant',
+              content: partial,
+              partialContent: partial || undefined,
+              reasoning: errorReasoning || undefined,
+              toolCalls: errorToolCalls.length > 0 ? errorToolCalls : undefined,
+              isError: true,
+              error: err,
               createdAt: new Date().toISOString(),
-            }]);
+            };
+            setMessages(prev => {
+              const updated = [...prev, errorMessage];
+              saveThreadMessages(targetTid, updated);
+              return updated;
+            });
+            currentToolCallsRef.current = [];
+            setStreamingToolCalls([]);
             setStreamingText('');
+            setStreamingReasoning('');
+            streamingTextRef.current = '';
+            streamingReasoningRef.current = '';
             setIsReasoning(false);
           },
         });
@@ -201,17 +231,41 @@ export default function App() {
           return updated;
         });
       } catch (err: any) {
-        setMessages(prev => [...prev, {
-          id: 'e-' + Date.now(), role: 'assistant',
-          content: 'Request failed: ' + (err?.message || String(err)),
+        const error = 'Request failed: ' + (err?.message || String(err));
+        const partial = streamingTextRef.current;
+        const errorMessage: Message = {
+          id: 'e-' + Date.now(),
+          role: 'assistant',
+          content: partial,
+          partialContent: partial || undefined,
+          isError: true,
+          error,
           createdAt: new Date().toISOString(),
-        }]);
+        };
+        setMessages(prev => {
+          const updated = [...prev, errorMessage];
+          saveThreadMessages(activeThreadId, updated);
+          return updated;
+        });
         setStreamingText('');
+        setStreamingReasoning('');
+        streamingTextRef.current = '';
+        streamingReasoningRef.current = '';
       }
       setSending(false);
     },
     [selectedAgentId, threadId, sending],
   );
+
+  const handleRetry = useCallback((messageId: string, options?: { model?: string, thinkingMode?: string }) => {
+    if (sending) return;
+    const failedIndex = messages.findIndex(message => message.id === messageId);
+    if (failedIndex < 0) return;
+    const previousUserMessage = [...messages.slice(0, failedIndex)].reverse().find(message => message.role === 'user');
+    if (!previousUserMessage) return;
+    setMessages(prev => prev.filter(message => message.id !== messageId));
+    void handleSend(previousUserMessage.content, options);
+  }, [handleSend, messages, sending]);
 
   const handleDeleteThread = useCallback((id: string) => {
     deleteThreadMessages(id);
@@ -282,7 +336,5 @@ export default function App() {
     </div>
   );
 }
-
-
 
 

@@ -64,8 +64,53 @@ export const webSearchTool = createTool({
   },
 });
 
+export const webFetchTool = createTool({
+  id: 'web_fetch',
+  description: 'Open a specific public HTTP or HTTPS URL and return its readable page text. Use this when the user provides a URL or asks about a specific website, instead of claiming that external websites are inaccessible.',
+  inputSchema: z.object({
+    url: z.string().describe('The full public URL to open, including https:// when possible'),
+  }),
+  outputSchema: z.object({
+    output: z.string(),
+  }),
+  execute: async ({ url }) => {
+    try {
+      const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+      const parsed = new URL(normalizedUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return { output: '[web_fetch failed: only HTTP and HTTPS URLs are supported]' };
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const res = await fetch(parsed, {
+          headers: {
+            Accept: 'text/html, text/plain, application/xhtml+xml',
+            'User-Agent': 'Mozilla/5.0 (compatible; GTM-Agent-Mastra/1.0)',
+          },
+          redirect: 'follow',
+          signal: controller.signal,
+        });
+        const body = await res.text();
+        const contentType = res.headers.get('content-type') || '';
+        const text = contentType.includes('html') ? stripHtml(body) : body;
+        const readable = text.replace(/\s+/g, ' ').trim().slice(0, 16000);
+        if (!res.ok) return { output: `[web_fetch ${res.status} ${res.statusText}] ${readable}`.trim() };
+        return { output: readable || '(page returned no readable text)' };
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (err) {
+      return { output: `[web_fetch failed: ${err instanceof Error ? err.message : String(err)}]` };
+    }
+  },
+});
+
 function stripHtml(html: string): string {
   return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]*>/g, '')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -248,6 +293,7 @@ export const recordProjectDecisionTool = createTool({
 
 export const ALL_GTM_TOOLS = {
   webSearchTool,
+  webFetchTool,
   saveAssetTool,
   readAssetTool,
   listAssetsTool,

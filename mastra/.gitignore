@@ -7,3 +7,7 @@ wrangler.jsonc
 *.db-shm
 *.db-wal
 *.db-journal
+
+# Debug artifacts
+.debug/
+shots/

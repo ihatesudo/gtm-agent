@@ -54,7 +54,7 @@ export async function fetchAgents(retries = 6, delayMs = 800): Promise<Agent[]> 
 interface StreamCallbacks {
   onText: (delta: string) => void;
   onFinish: (fullText: string, reasoning?: string, threadId?: string) => void;
-  onError: (err: string) => void;
+  onError: (err: string, partialContent?: string, reasoning?: string, threadId?: string) => void;
   onReasoning?: (text: string) => void;
   onToolCall?: (call: { tool: string; input: string; output?: string }) => void;
   model?: string;
@@ -288,7 +288,11 @@ function parseSSE(
             } else if (type === 'error') {
               const rawErr = parsed.error || parsed.message || parsed.payload || 'Stream error';
               log('[#%d] ❌ error event: %s (t=%dms)', seq, rawErr, t.toFixed(0));
-              callbacks?.onError(formatLLMError(rawErr));
+              if (!resolved) {
+                resolved = true;
+                callbacks?.onError(formatLLMError(rawErr), accumulated, accumulatedReasoning, threadId);
+                resolve({ threadId });
+              }
             } else {
               log('[#%d] other event type=%s (t=%dms)', seq, type, t.toFixed(0));
             }
@@ -326,7 +330,7 @@ function parseSSE(
         log('❌ pump error (t=%dms): %s', t.toFixed(0), err);
         if (!resolved) {
           resolved = true;
-          callbacks?.onError(formatLLMError(err));
+          callbacks?.onError(formatLLMError(err), accumulated, accumulatedReasoning, threadId);
           resolve({ threadId });
         }
       });
@@ -450,4 +454,3 @@ export async function saveAgentOverride(agentId: string, instructions: string): 
     return false;
   }
 }
-

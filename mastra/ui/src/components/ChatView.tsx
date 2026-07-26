@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import type { Agent, Message, ToolCall } from '../types';
 import { ProviderWarning } from './ProviderWarning';
+import { Dropdown } from './Dropdown';
+import {
+  MODEL_OPTIONS,
+  THINKING_OPTIONS,
+  SHORT_AGENT,
+  agentDetail,
+  shortAgentName as shortAgentNameFor,
+} from './selectorMetadata';
 import Icon from './Icon';
 
 interface Props {
@@ -15,6 +23,7 @@ interface Props {
   sending: boolean;
   isReasoning: boolean;
   onSend: (content: string, options?: { model?: string, thinkingMode?: string }) => void;
+  onRetry?: (messageId: string, options?: { model?: string, thinkingMode?: string }) => void;
 }
 
 function ReasoningAccordion({ text }: { text: string }) {
@@ -79,6 +88,7 @@ function ReasoningAccordion({ text }: { text: string }) {
 
 const TOOL_LABELS: Record<string, string> = {
   web_search: 'Search',
+  web_fetch: 'Open Page',
   save_asset: 'Save Asset',
   read_asset: 'Read Asset',
   list_assets: 'List Assets',
@@ -169,63 +179,171 @@ function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) 
 }
 
 function FormattedInline({ text }: { text: string }) {
-  // Parse bold **text** and inline `code`
-  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+  // Parse bold, italic, strikethrough, inline code, and [links](url) — in priority order
+  const TOKEN = /(\*\*.*?\*\*|__.*?__|~~.*?~~|\*(?!\*).*?\*(?!\*)|_(?!_).*?_(?!_)|`[^`]+`|\[([^\]]+)\]\(([^)]+)\))/g;
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = TOKEN.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    const raw = m[0];
+
+    if (raw.startsWith('**') || raw.startsWith('__')) {
+      parts.push(<strong key={last} style={{ fontWeight: 700 }}>{raw.slice(2, -2)}</strong>);
+    } else if (raw.startsWith('~~')) {
+      parts.push(<s key={last} style={{ opacity: 0.7 }}>{raw.slice(2, -2)}</s>);
+    } else if (raw.startsWith('*') || raw.startsWith('_')) {
+      parts.push(<em key={last}>{raw.slice(1, -1)}</em>);
+    } else if (raw.startsWith('`')) {
+      parts.push(
+        <code key={last} style={{
+          background: 'rgba(0,0,0,0.05)',
+          border: '1px solid var(--border)',
+          borderRadius: 4,
+          padding: '1px 5px',
+          fontSize: '0.88em',
+          fontFamily: 'var(--font-mono)',
+          color: 'var(--accent)',
+          wordBreak: 'break-all',
+        }}>{raw.slice(1, -1)}</code>
+      );
+    } else if (raw.startsWith('[')) {
+      // [label](url)
+      parts.push(
+        <a key={last} href={m[3]} target="_blank" rel="noopener noreferrer"
+          style={{ color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+          {m[2]}
+        </a>
+      );
+    }
+    last = m.index + raw.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return <>{parts}</>;
+}
+
+// Represent a parsed "block" of content: fenced code, or an array of rendered lines
+type ParsedBlock =
+  | { type: 'code'; lang: string; code: string }
+  | { type: 'lines'; lines: string[] };
+
+function parseBlocks(content: string): ParsedBlock[] {
+  const result: ParsedBlock[] = [];
+  // Match fenced code blocks (```lang\n...```) including blocks with no trailing newline before ```
+  const codeRe = /```([\w+-]*)[ \t]*\n?([\s\S]*?)```/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = codeRe.exec(content)) !== null) {
+    if (m.index > last) {
+      result.push({ type: 'lines', lines: content.slice(last, m.index).split('\n') });
+    }
+    result.push({ type: 'code', lang: m[1].trim() || 'code', code: m[2].trimEnd() });
+    last = m.index + m[0].length;
+  }
+  if (last < content.length) {
+    result.push({ type: 'lines', lines: content.slice(last).split('\n') });
+  }
+  return result;
+}
+
+// Render a single text line, aware of line type
+function RenderLine({ line, idx }: { line: string; idx: number }) {
+  // Headings
+  if (/^#{1} /.test(line)) return <h2 key={idx} style={{ fontSize: 18, fontWeight: 700, margin: '10px 0 4px', color: 'var(--text)', lineHeight: 1.3 }}><FormattedInline text={line.replace(/^# /, '')} /></h2>;
+  if (/^#{2} /.test(line)) return <h3 key={idx} style={{ fontSize: 16, fontWeight: 700, margin: '8px 0 3px', color: 'var(--text)', lineHeight: 1.3 }}><FormattedInline text={line.replace(/^## /, '')} /></h3>;
+  if (/^#{3} /.test(line)) return <h4 key={idx} style={{ fontSize: 14.5, fontWeight: 600, margin: '6px 0 2px', color: 'var(--text)' }}><FormattedInline text={line.replace(/^### /, '')} /></h4>;
+  if (/^#{4,} /.test(line)) return <h5 key={idx} style={{ fontSize: 13.5, fontWeight: 600, margin: '4px 0 2px', color: 'var(--text-secondary)' }}><FormattedInline text={line.replace(/^#+\s/, '')} /></h5>;
+
+  // Horizontal rule
+  if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
+    return <hr key={idx} style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '10px 0' }} />;
+  }
+
+  // Blockquote
+  if (line.startsWith('> ')) {
+    return (
+      <div key={idx} style={{
+        borderLeft: '3px solid var(--accent)',
+        paddingLeft: 12,
+        margin: '2px 0',
+        color: 'var(--text-secondary)',
+        fontStyle: 'italic',
+        fontSize: '0.97em',
+      }}>
+        <FormattedInline text={line.slice(2)} />
+      </div>
+    );
+  }
+
+  // Blank line → small spacer
+  if (line.trim() === '') {
+    return <div key={idx} style={{ height: 6 }} />;
+  }
+
+  // Plain paragraph
   return (
-    <>
-      {parts.map((part, idx) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={idx} style={{ fontWeight: 600, color: 'var(--text)' }}>{part.slice(2, -2)}</strong>;
-        }
-        if (part.startsWith('`') && part.endsWith('`')) {
-          return (
-            <code key={idx} style={{
-              background: 'rgba(0, 0, 0, 0.05)',
-              border: '1px solid var(--border)',
-              borderRadius: 4,
-              padding: '1px 5px',
-              fontSize: '0.9em',
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--accent)',
-            }}>
-              {part.slice(1, -1)}
-            </code>
-          );
-        }
-        return part;
-      })}
-    </>
+    <p key={idx} style={{ margin: 0 }}>
+      <FormattedInline text={line} />
+    </p>
   );
+}
+
+// Group consecutive bullet lines into a single <ul> and consecutive numbered
+// lines into a single <ol> for proper list UX
+type RawLine = string;
+type LineGroup =
+  | { kind: 'ul'; items: string[] }
+  | { kind: 'ol'; items: Array<{ n: number; text: string }> }
+  | { kind: 'other'; line: string };
+
+function groupLines(lines: RawLine[]): LineGroup[] {
+  const groups: LineGroup[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    // Unordered bullet: - or *
+    if (/^[-*] /.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*] /.test(lines[i])) {
+        items.push(lines[i].slice(2));
+        i++;
+      }
+      groups.push({ kind: 'ul', items });
+      continue;
+    }
+    // Ordered list: 1. 2. etc.
+    const olMatch = /^(\d+)\. (.*)$/.exec(line);
+    if (olMatch) {
+      const items: Array<{ n: number; text: string }> = [];
+      while (i < lines.length) {
+        const m = /^(\d+)\. (.*)$/.exec(lines[i]);
+        if (!m) break;
+        items.push({ n: parseInt(m[1], 10), text: m[2] });
+        i++;
+      }
+      groups.push({ kind: 'ol', items });
+      continue;
+    }
+    groups.push({ kind: 'other', line });
+    i++;
+  }
+  return groups;
 }
 
 function FormattedMessage({ content, isUser }: { content: string; isUser: boolean }) {
   if (isUser) {
-    return <div>{content}</div>;
+    return <div style={{ whiteSpace: 'pre-wrap' }}>{content}</div>;
   }
 
-  // Split content by code blocks ```
-  const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
-  const blocks = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = codeBlockRegex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      blocks.push({ type: 'text', content: content.slice(lastIndex, match.index) });
-    }
-    blocks.push({ type: 'code', lang: match[1] || 'code', code: match[2].trim() });
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < content.length) {
-    blocks.push({ type: 'text', content: content.slice(lastIndex) });
-  }
+  const blocks = parseBlocks(content);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {blocks.map((block, i) => {
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {blocks.map((block, bi) => {
         if (block.type === 'code') {
           return (
-            <div key={i} style={{
+            <div key={bi} style={{
               borderRadius: 'var(--radius-sm)',
               overflow: 'hidden',
               background: '#1C1917',
@@ -242,20 +360,21 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
                 color: '#A8A29E',
                 fontSize: 11.5,
                 fontFamily: 'var(--font-mono)',
+                userSelect: 'none',
               }}>
-                <span>{block.lang}</span>
-                <CopyButton text={block.code || ''} label="Copy code" />
+                <span style={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5 }}>{block.lang}</span>
+                <CopyButton text={block.code} label="Copy code" />
               </div>
               <pre style={{
-                padding: 14,
+                padding: 16,
                 margin: 0,
                 color: '#F5F5F4',
                 fontSize: 13,
                 fontFamily: 'var(--font-mono)',
-                lineHeight: 1.55,
+                lineHeight: 1.6,
                 overflowX: 'auto',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
+                whiteSpace: 'pre',
+                tabSize: 2,
               }}>
                 <code>{block.code}</code>
               </pre>
@@ -263,33 +382,65 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
           );
         }
 
-        // Render text section line by line
-        const lines = (block.content || '').split('\n');
+        // Text block — group lines into lists/headings/paragraphs
+        const groups = groupLines(block.lines);
         return (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {lines.map((line, lIdx) => {
-              if (line.startsWith('# ')) {
-                return <h3 key={lIdx} style={{ fontSize: 17, fontWeight: 700, marginTop: 8, marginBottom: 4, color: 'var(--text)' }}>{line.slice(2)}</h3>;
-              }
-              if (line.startsWith('## ')) {
-                return <h4 key={lIdx} style={{ fontSize: 15, fontWeight: 700, marginTop: 6, marginBottom: 3, color: 'var(--text)' }}>{line.slice(3)}</h4>;
-              }
-              if (line.startsWith('### ')) {
-                return <h5 key={lIdx} style={{ fontSize: 14, fontWeight: 600, marginTop: 4, marginBottom: 2, color: 'var(--text)' }}>{line.slice(4)}</h5>;
-              }
-              if (line.startsWith('- ') || line.startsWith('* ')) {
+          <div key={bi} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {groups.map((g, gi) => {
+              if (g.kind === 'ul') {
                 return (
-                  <div key={lIdx} style={{ display: 'flex', gap: 8, paddingLeft: 8 }}>
-                    <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>•</span>
-                    <span><FormattedInline text={line.slice(2)} /></span>
-                  </div>
+                  <ul key={gi} style={{
+                    margin: '4px 0',
+                    paddingLeft: 20,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 5,
+                    listStyle: 'none',
+                  }}>
+                    {g.items.map((item, ii) => (
+                      <li key={ii} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <span style={{
+                          color: 'var(--accent)',
+                          fontWeight: 700,
+                          flexShrink: 0,
+                          marginTop: 1,
+                          fontSize: '1.1em',
+                          lineHeight: 1,
+                        }}>•</span>
+                        <span style={{ flex: 1, lineHeight: 1.6 }}><FormattedInline text={item} /></span>
+                      </li>
+                    ))}
+                  </ul>
                 );
               }
-              return (
-                <p key={lIdx} style={{ margin: 0, minHeight: line === '' ? 8 : undefined }}>
-                  <FormattedInline text={line} />
-                </p>
-              );
+              if (g.kind === 'ol') {
+                return (
+                  <ol key={gi} style={{
+                    margin: '4px 0',
+                    paddingLeft: 20,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 5,
+                    listStyle: 'none',
+                  }}>
+                    {g.items.map((item, ii) => (
+                      <li key={ii} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <span style={{
+                          color: 'var(--accent)',
+                          fontWeight: 700,
+                          flexShrink: 0,
+                          minWidth: 20,
+                          textAlign: 'right',
+                          lineHeight: 1.6,
+                          fontSize: '0.92em',
+                        }}>{item.n}.</span>
+                        <span style={{ flex: 1, lineHeight: 1.6 }}><FormattedInline text={item.text} /></span>
+                      </li>
+                    ))}
+                  </ol>
+                );
+              }
+              return <RenderLine key={gi} line={g.line} idx={gi} />;
             })}
           </div>
         );
@@ -298,41 +449,13 @@ function FormattedMessage({ content, isUser }: { content: string; isUser: boolea
   );
 }
 
-const SHORT_AGENT: Record<string, string> = {
-  director: 'Director',
-  'paid-search': 'Paid Search',
-  'social-ads': 'Social Ads',
-  seo: 'SEO',
-  'b2b-linkedin': 'B2B LinkedIn',
-  'lifecycle-retention': 'Lifecycle',
-};
-
-const MODEL_LABEL: Record<string, string> = {
-  'gemini-flash': 'Gemini 2.5 Flash',
-  'gemini-pro': 'Gemini 2.5 Pro',
-  openrouter: 'OpenRouter',
-  glm: 'GLM-5.2',
-};
-
+// shortAgentName / agentDetail live in selectorMetadata.ts (shared with
+// WelcomeView). This wraps the agent-object call site used in this file.
 function shortAgentName(agent: Agent) {
-  return SHORT_AGENT[agent.id] || agent.name;
+  return shortAgentNameFor(agent.name, agent.id);
 }
 
-const DROPDOWN_STYLE: React.CSSProperties = {
-  background: 'var(--surface-hover)',
-  border: '1px solid var(--border)',
-  color: 'var(--text)',
-  fontSize: 12,
-  padding: '4px 6px',
-  borderRadius: 'var(--radius-sm)',
-  outline: 'none',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  fontWeight: 500,
-  maxWidth: 120,
-};
-
-export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent, messages, streamingText, streamingReasoning, streamingToolCalls = [], sending, isReasoning, onSend }: Props) {
+export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent, messages, streamingText, streamingReasoning, streamingToolCalls = [], sending, isReasoning, onSend, onRetry }: Props) {
 
   const [input, setInput] = useState('');
   const [model, setModel] = useState('openrouter');
@@ -349,16 +472,31 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
     if (!text || sending || !agent) return;
     onSend(text, { model, thinkingMode });
     setInput('');
+    // Reset the textarea to its natural single-line height after sending.
+    // We set 'auto' (not a recomputed px) so the element returns to its min
+    // height regardless of what the content was — mirrors WelcomeView, and
+    // avoids leaving a stale tall inline height that previously combined with
+    // `flex:1` to collapse the input.
+    if (inputRef.current) inputRef.current.style.height = 'auto';
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
+  // Auto-resize the textarea to fit its content, capped at 200px. Must NOT set
+  // `flex:1` on the textarea — flex shorthand `1 1 0%` lets the flex container
+  // shrink the element below its content height once an inline height is set,
+  // which is what collapsed the chat textarea to ~31px. (Parity with
+  // WelcomeView: default flex `0 1 auto`, height driven by scrollHeight.)
+  function autoResize(el: HTMLTextAreaElement) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  }
+
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    e.target.style.height = 'auto';
-    e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+    autoResize(e.target);
   };
 
   return (
@@ -415,15 +553,17 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22, maxWidth: 720, margin: '0 auto' }}>
           {messages.map(msg => {
             const isUser = msg.role === 'user';
-            const hasContent = Boolean(msg.content && msg.content.trim().length > 0);
+            const displayContent = msg.partialContent || msg.content;
+            const hasContent = Boolean(displayContent && displayContent.trim().length > 0);
             const hasReasoning = Boolean(msg.reasoning && msg.reasoning.trim().length > 0);
             const hasToolCalls = Boolean(msg.toolCalls && msg.toolCalls.length > 0);
+            const hasError = Boolean(!isUser && msg.isError && msg.error);
 
-            if (!isUser && !hasContent && !hasReasoning && !hasToolCalls) {
+            if (!isUser && !hasContent && !hasReasoning && !hasToolCalls && !hasError) {
               return null;
             }
 
-            const isToolOnly = !isUser && !hasContent && hasToolCalls;
+            const isToolOnly = !isUser && !hasContent && hasToolCalls && !hasError;
 
             return (
               <div key={msg.id} style={{ display: 'flex', gap: 12, flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
@@ -454,10 +594,10 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
                       ))}
                     </div>
                   ) : (
-                    hasContent && (
+                    (hasContent || hasError) && (
                       <div style={{
                         background: isUser ? 'var(--accent-gradient)' : 'var(--surface)',
-                        border: isUser ? 'none' : '1px solid var(--border)',
+                        border: isUser ? 'none' : `1px solid ${hasError ? '#FECACA' : 'var(--border)'}`,
                         borderRadius: 'var(--radius)',
                         borderTopRightRadius: isUser ? 4 : 'var(--radius)',
                         borderTopLeftRadius: isUser ? 'var(--radius)' : 4,
@@ -474,10 +614,51 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
                             ))}
                           </div>
                         )}
-                        <FormattedMessage content={msg.content} isUser={isUser} />
-                        {!isUser && (
+                        {hasContent && <FormattedMessage content={displayContent} isUser={isUser} />}
+                        {hasError && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            marginTop: hasContent ? 12 : 0,
+                            paddingTop: hasContent ? 10 : 0,
+                            borderTop: hasContent ? '1px solid #FECACA' : 'none',
+                            color: '#991B1B',
+                            fontSize: 12.5,
+                          }}>
+                            <span style={{ flex: 1 }}>{msg.error}</span>
+                            {onRetry && (
+                              <button
+                                type="button"
+                                onClick={() => onRetry(msg.id, { model, thinkingMode })}
+                                disabled={sending}
+                                aria-label="Retry response"
+                                title="Retry response"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  flexShrink: 0,
+                                  border: '1px solid #FCA5A5',
+                                  borderRadius: 'var(--radius-sm)',
+                                  background: '#FFF7F7',
+                                  color: '#B91C1C',
+                                  padding: '5px 8px',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: sending ? 'not-allowed' : 'pointer',
+                                  opacity: sending ? 0.5 : 1,
+                                }}
+                              >
+                                <Icon name="refresh" size={13} />
+                                Retry
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {!isUser && !hasError && (
                           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, paddingTop: 6, borderTop: '1px solid var(--border-light)' }}>
-                            <CopyButton text={msg.content} label="Copy response" />
+                            <CopyButton text={displayContent} label="Copy response" />
                           </div>
                         )}
                       </div>
@@ -569,19 +750,19 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
                     </div>
                   )}
                   {streamingText ? (
-                    <>
-                      {streamingText}
+                    <div style={{ position: 'relative' }}>
+                      <FormattedMessage content={streamingText} isUser={false} />
                       <span style={{
                         display: 'inline-block',
                         width: 6,
-                        height: 15,
+                        height: 14,
                         background: 'var(--accent)',
-                        marginLeft: 3,
+                        marginLeft: 2,
                         borderRadius: 1,
                         verticalAlign: 'text-bottom',
                         animation: 'blink 0.8s step-end infinite',
                       }} />
-                    </>
+                    </div>
                   ) : streamingToolCalls.length > 0 ? (
                     <span style={{ fontSize: 12.5, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
                       Using tools…
@@ -630,17 +811,18 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
             placeholder={agent ? `Message ${agent.name}…` : 'Select an agent…'}
             rows={1} disabled={!agent || sending}
             style={{
-              flex: 1,
+              width: '100%',
+              minHeight: 48,
+              maxHeight: 200,
               background: 'transparent',
               border: 'none',
               color: 'var(--text)',
               fontSize: 15,
-              padding: '4px 6px',
+              padding: '6px 8px',
               resize: 'none',
               outline: 'none',
               fontFamily: 'inherit',
               lineHeight: 1.5,
-              maxHeight: 150,
               opacity: agent && !sending ? 1 : 0.4,
             }}
           />
@@ -648,40 +830,36 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
             <div style={{ display: 'flex', gap: 8 }}>
-              <select
+              <Dropdown
+                ariaLabel="Agent"
                 value={selectedAgentId}
-                onChange={(e) => onSelectAgent(e.target.value)}
+                options={agents.map(a => ({
+                  value: a.id,
+                  label: shortAgentName(a),
+                  icon: a.id === 'director' ? 'target' : 'bot',
+                  detail: { description: agentDetail(a.id, a.description) },
+                }))}
+                onChange={(v) => onSelectAgent(v)}
                 disabled={sending}
-                style={{ ...DROPDOWN_STYLE, fontWeight: 600, maxWidth: 110 }}
-              >
-                {agents.map(a => (
-                  <option key={a.id} value={a.id}>{shortAgentName(a)}</option>
-                ))}
-              </select>
+                triggerWidth={108}
+              />
 
-              <select 
-                value={model} 
-                onChange={(e) => setModel(e.target.value)}
+              <Dropdown
+                ariaLabel="Model"
+                value={model}
+                options={MODEL_OPTIONS}
+                onChange={(v) => setModel(v)}
                 disabled={!agent || sending}
-                style={DROPDOWN_STYLE}
-              >
-                <option value="gemini-flash">{MODEL_LABEL['gemini-flash']}</option>
-                <option value="gemini-pro">{MODEL_LABEL['gemini-pro']}</option>
-                <option value="openrouter">{MODEL_LABEL['openrouter']}</option>
-                <option value="glm">{MODEL_LABEL['glm']}</option>
-              </select>
+              />
 
-              <select 
-                value={thinkingMode} 
-                onChange={(e) => setThinkingMode(e.target.value)}
+              <Dropdown
+                ariaLabel="Thinking mode"
+                value={thinkingMode}
+                options={THINKING_OPTIONS}
+                onChange={(v) => setThinkingMode(v)}
                 disabled={!agent || sending}
-                style={{ ...DROPDOWN_STYLE, maxWidth: 100 }}
-              >
-                <option value="none">No Think</option>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
+                triggerWidth={96}
+              />
             </div>
             
             <button onClick={handleSend} disabled={!input.trim() || sending || !agent}
@@ -746,4 +924,3 @@ export default function ChatView({ agents, selectedAgentId, onSelectAgent, agent
     </div>
   );
 }
-

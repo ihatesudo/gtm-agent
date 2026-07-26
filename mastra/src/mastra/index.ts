@@ -35,7 +35,7 @@ const deployer = new CloudflareDeployer({
   browser: { binding: 'BROWSER' },
   vars: {
     DIRECTOR_MODEL: 'google/gemini-2.5-flash',
-    SPECIALIST_MODEL: 'google/gemini-2.5-flash-lite-preview-06-17',
+    SPECIALIST_MODEL: 'google/gemini-2.5-flash',
   },
 });
 
