@@ -11,6 +11,7 @@ import {
   formatProjectContext,
   ProjectMemory,
 } from '../memory/project-memory.js';
+import { searchFaqs, formatFaqResults } from '../memory/faq-store.js';
 
 type SkillsRegistry = Record<string, { description: string; content: string; refs: Record<string, string> }>;
 const registry = skillsRegistry as SkillsRegistry;
@@ -291,6 +292,29 @@ export const recordProjectDecisionTool = createTool({
   },
 });
 
+/**
+ * FAQ knowledge-base search. Returns formatted Q&A hits for the agent to fold
+ * into its answer, or an explicit "no match" note. Keyword-based (LIKE) — no
+ * embeddings. The Director uses this to ground answers in the curated KB.
+ */
+export const faqSearchTool = createTool({
+  id: 'faq_search',
+  description:
+    'Search the curated FAQ knowledge base for marketing/GTM questions. Use when the user asks a common how-to or factual question (e.g. "how to set up conversion tracking", "what is ICP"). Returns matched Q&A pairs or a no-match note.',
+  inputSchema: z.object({
+    query: z.string().describe('The user question or search terms'),
+  }),
+  outputSchema: z.object({ output: z.string() }),
+  execute: async ({ query }) => {
+    try {
+      const hits = await searchFaqs(query, 5);
+      return { output: formatFaqResults(hits, query) };
+    } catch (e: any) {
+      return { output: `[faq_search failed: ${String(e?.message || e)}]` };
+    }
+  },
+});
+
 export const ALL_GTM_TOOLS = {
   webSearchTool,
   webFetchTool,
@@ -303,4 +327,5 @@ export const ALL_GTM_TOOLS = {
   updateProjectContextTool,
   recordProjectCampaignTool,
   recordProjectDecisionTool,
+  faqSearchTool,
 };

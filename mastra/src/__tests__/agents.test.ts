@@ -142,7 +142,10 @@ describe('Director system prompt — valid tool names (prevents hallucination)',
   let instructions: string;
 
   beforeAll(async () => {
-    instructions = await directorAgent.getInstructions({});
+    // getInstructions may return a structured CoreSystemMessage; coerce to a
+    // string for substring checks. We only ever do .toContain / regex here.
+    const raw = await directorAgent.getInstructions({});
+    instructions = typeof raw === 'string' ? raw : JSON.stringify(raw);
   });
 
   it('lists every valid agent tool ID in the system prompt', () => {
@@ -192,7 +195,8 @@ describe('Director system prompt — delegation boundary (prevents research dele
   let instructions: string;
 
   beforeAll(async () => {
-    instructions = await directorAgent.getInstructions({});
+    const raw = await directorAgent.getInstructions({});
+    instructions = typeof raw === 'string' ? raw : JSON.stringify(raw);
   });
 
   it('marks competitive analysis as something the director does itself (not a delegation)', () => {
@@ -279,8 +283,8 @@ describe('Director structural checks', () => {
   });
 
   it('getInstructions() returns a non-empty string', async () => {
-    const inst = await directorAgent.getInstructions({});
-    expect(typeof inst).toBe('string');
+    const raw = await directorAgent.getInstructions({});
+    const inst = typeof raw === 'string' ? raw : JSON.stringify(raw);
     expect(inst.length).toBeGreaterThan(100);
   });
 
@@ -317,6 +321,14 @@ describe('Director structural checks', () => {
     const hasSaveAsset = keys.includes('saveAssetTool') || keys.includes('save_asset') ||
       Object.values(tools).some((t: any) => t?.id === 'save_asset');
     expect(hasSaveAsset, `director is missing save_asset tool; found keys: ${keys.join(', ')}`).toBe(true);
+  });
+
+  it('listTools() includes faqSearchTool (key) with id faq_search', async () => {
+    const tools = await directorAgent.listTools({});
+    const keys = Object.keys(tools);
+    const hasFaq = keys.includes('faqSearchTool') || keys.includes('faq_search') ||
+      Object.values(tools).some((t: any) => t?.id === 'faq_search');
+    expect(hasFaq, `director is missing faq_search tool; found keys: ${keys.join(', ')}`).toBe(true);
   });
 });
 

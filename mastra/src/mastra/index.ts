@@ -1,19 +1,18 @@
 import { Mastra } from '@mastra/core';
 import { CloudflareDeployer } from '@mastra/deployer-cloudflare';
-import { LibSQLStore } from '@mastra/libsql';
 import { Observability, ConsoleExporter } from '@mastra/observability';
 import { MastraEditor } from '@mastra/editor';
 import { directorAgent } from './agents/director.js';
+import { directorMemory } from './agents/director.js';
 import { ALL_SPECIALIST_AGENTS } from './agents/specialists.js';
 import { campaignWorkflow } from './workflows/campaign-workflow.js';
 import { ALL_GTM_TOOLS } from './tools/gtm-tools.js';
 import { getCachedConnectivity } from './healthCheck.js';
-
-const storage = new LibSQLStore({
-  id: 'mastra-storage',
-  url: process.env.TURSO_DATABASE_URL || 'file:mastra.db',
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+import { sharedStorage as storage } from './storage/store.js';
+import { listConversations, setThreadCSAT, type AdminMemory } from './admin/conversations.js';
+import { classifyIntent } from './intent/classifier.js';
+import { logRoutingDecision } from './intent/logging.js';
+import { listFaqs, upsertFaq, deleteFaq } from './memory/faq-store.js';
 
 // Keep Worker-specific configuration beside the Mastra app. `mastra build`
 // uses this to generate the Worker entrypoint and Wrangler configuration.
@@ -129,14 +128,95 @@ export const mastra = new Mastra({
         }
       }
 
+      // Admin read-only API: list conversations with message counts + CSAT.
+      // CSAT rides on thread metadata (zero schema change). directorMemory is
+      // persisted to the shared LibSQL store, so this reads real history.
+      if (c.req.path === '/api/admin/conversations') {
+        try {
+          const perPage = Number(c.req.query('perPage') ?? 100);
+          const result = await listConversations(directorMemory as unknown as AdminMemory, { perPage });
+          return c.json(result);
+        } catch (e: any) {
+          return c.json({ conversations: [], total: 0, error: String(e?.message || e) });
+        }
+      }
+
+      // Write CSAT for a thread. Body: { threadId, rating(1-5), comment? }
+      if (c.req.path === '/api/admin/csat' && c.req.method === 'POST') {
+        const body = await c.req.json().catch(() => ({}));
+        try {
+          await setThreadCSAT(directorMemory as unknown as AdminMemory, {
+            threadId: body.threadId,
+            rating: Number(body.rating),
+            comment: body.comment,
+          });
+          return c.json({ success: true });
+        } catch (e: any) {
+          return c.json({ success: false, error: String(e?.message || e) }, 400);
+        }
+      }
+
+      // Admin FAQ API: list / create / delete curated knowledge-base entries.
+      if (c.req.path === '/api/admin/faqs' && c.req.method === 'GET') {
+        try {
+          const faqs = await listFaqs();
+          return c.json({ faqs, total: faqs.length });
+        } catch (e: any) {
+          return c.json({ faqs: [], total: 0, error: String(e?.message || e) });
+        }
+      }
+      if (c.req.path === '/api/admin/faqs' && c.req.method === 'POST') {
+        const body = await c.req.json().catch(() => ({}));
+        try {
+          if (!body.id || !body.question || !body.answer) {
+            return c.json({ success: false, error: 'id, question, answer are required' }, 400);
+          }
+          const now = new Date().toISOString();
+          await upsertFaq({
+            id: String(body.id),
+            question: String(body.question),
+            answer: String(body.answer),
+            tags: Array.isArray(body.tags) ? body.tags.map(String) : [],
+            source: typeof body.source === 'string' ? body.source : 'admin',
+            createdAt: now,
+            updatedAt: now,
+          });
+          return c.json({ success: true });
+        } catch (e: any) {
+          return c.json({ success: false, error: String(e?.message || e) }, 400);
+        }
+      }
+      if (c.req.path.startsWith('/api/admin/faqs/') && c.req.method === 'DELETE') {
+        const id = c.req.path.replace('/api/admin/faqs/', '');
+        try {
+          await deleteFaq(id);
+          return c.json({ success: true });
+        } catch (e: any) {
+          return c.json({ success: false, error: String(e?.message || e) }, 400);
+        }
+      }
+
       const requestContext = c.get('requestContext') as { set: (key: string, value: unknown) => void };
       if (requestContext?.set) {
         requestContext.set('cloudflareBindings', c.env);
-        // Thread the UI's runtime model choice into requestContext
+        // Thread the UI's runtime model choice + classified intent into requestContext.
         if (c.req.method === 'POST') {
           const body = await c.req.raw.clone().json().catch(() => null as null | Record<string, unknown>);
           if (body && typeof body.modelChoice === 'string') {
             requestContext.set('modelChoice', body.modelChoice);
+          }
+          // Classify the user's latest message for routing observability.
+          // Pure + deterministic; logged to the dev console. Does not change
+          // routing — the Director still decides via its LLM tool-calling.
+          if (body && Array.isArray(body.messages)) {
+            const lastUser = [...body.messages].reverse().find((m: any) => m?.role === 'user');
+            const text = typeof lastUser?.content === 'string' ? lastUser.content : '';
+            if (text) {
+              const decision = classifyIntent(text);
+              const threadId = (body as any)?.memory?.thread as string | undefined;
+              requestContext.set('intent', decision);
+              void logRoutingDecision({ threadId: threadId ?? '-', userText: text.slice(0, 120), decision });
+            }
           }
         }
       }

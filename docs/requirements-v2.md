@@ -116,3 +116,26 @@
   - `ChatView.tsx` + `WelcomeView.tsx`：3 个原生 `<select>` 全部替换为 `<Dropdown>`，两视图一致。
   - Tab 焦点：DOM 顺序 textarea → Agent → Model → Thinking → Send（Send 启用态下），新增 Tab 顺序测试；旧测试更新为新契约。
   - 测试：`Dropdown.test.tsx` 新增 9 条组件契约测试（red→green，含键盘）；`ChatView`/`WelcomeView` 替换为新 trigger 契约 + Tab 顺序测试。全套 UI **7 files / 101 tests 全绿**；浏览器实测两视图下拉 hover 详情卡渲染正常，无 pageerror。
+- 2026-07-26 **P2-1 Done** 对话历史后端持久化（TDD）：
+  - 根因：`directorAgent` 的 `new Memory({ options })` 未传 `storage`，对话仅存浏览器 localStorage，后端不可查、重启即丢。
+  - 修复：抽出 `src/mastra/storage/store.ts`（单一 `sharedStorage` LibSQL 实例，避免 index↔director 循环依赖）；`director.ts` 新增 `directorMemory`（带 `storage: sharedStorage`）并用于 agent。index.ts 改用导入的 `sharedStorage`。
+  - 验证：`memory.test.ts` 新增 4 条契约测试（red→green）；实机发对话后，内置 `GET /api/memory/threads` 返回该 thread + `GET /api/memory/threads/:id/messages` 返回 2 条消息（user+assistant）。后端 66 tests 全绿。
+- 2026-07-26 **P3-1（后端部分）Done** 管理后台 API：对话列表 + CSAT（TDD）：
+  - 新增 `src/mastra/admin/conversations.ts`（纯函数模块，接收 `AdminMemory` 依赖，可单测）：`listConversations`（返回 id/title/createdAt/messageCount/csat/csatComment，按 updatedAt DESC 排序，防御性 slice）、`setThreadCSAT`（写入 thread metadata，merge 不覆盖其它键）、`validateCSAT`（1-5 整数）。
+  - CSAT 复用 `mastra_threads.metadata` jsonb 列（**零 schema 改动**，namespace `csat`/`csatComment`）。
+  - `index.ts` middleware 新增 `GET /api/admin/conversations`、`POST /api/admin/csat` 两条路由（照抄 telemetry 的 try/catch + error 信封）。
+  - 验证：`admin-api.test.ts` 新增 10 条（red→green，含越界 rating 400、未知 thread、merge 不覆盖）；实机 GET 返回 38 对话含消息数，POST csat=5 后再 GET 读到 csat:5，rating=0 返回 HTTP 400。后端 76 tests 全绿。Admin 只读 UI 留待下一轮。
+- 2026-07-26 **P2-2 Done** 意图识别（观测化 + 显式分类器）（TDD）：
+  - 新增 `src/mastra/intent/classifier.ts`：纯函数 `classifyIntent(text)`，关键词规则（competitive/paid-search/social-ads/seo/b2b-linkedin/lifecycle/creative/faq/general），返回 `{intent, delegateTo?, reason, confidence}`。优先级：competitive 高于委派。中英双语关键词。确定性、无 LLM、无 I/O。
+  - 新增 `src/mastra/intent/logging.ts`：`logRoutingDecision`（注入式 `write` 回调，始终镜像到 console，best-effort 不抛错）。
+  - `director.ts` 加 `onStepFinish`（记录每步工具/委派，纯日志不改路由）；`index.ts` middleware 在 POST 时对最后一条 user 消息跑分类器，写入 `requestContext.intent` 并打 `[intent]` 日志。
+  - 验证：`intent.test.ts` 新增 14 条（red→green）；实机发 "SEO quick wins" → 日志 `intent=seo delegate→seo`；发 "cold email sequence" → `intent=b2b-linkedin`。后端 90 tests 全绿。
+- 2026-07-26 **P2-3 Done** FAQ 知识库检索 + faq_search 工具（TDD）：
+  - 新增 `src/mastra/memory/faq-store.ts`：自建 `faq` 表（id/question/answer/tags/source/data），`upsertFaq`/`listFaqs`/`getFaq`/`deleteFaq`/`searchFaqs`（LIKE 预过滤 + 纯函数 `scoreFaq` 评分：title 3 分 > tag 2 分 > answer 1 分）/ `formatFaqResults`（无命中时显式说明）。
+  - `gtm-tools.ts` 新增 `faqSearchTool`（id `faq_search`），注册进 `ALL_GTM_TOOLS`（Director 与所有 specialist 继承）。
+  - `index.ts` middleware 新增 `GET/POST/DELETE /api/admin/faqs` 三条路由（供后台录入/删除，校验 id/question/answer 必填）。
+  - `scripts/seed-faqs.mjs`：预置 10 条 GTM 常见问答（ICP / 转化追踪 / 落地页 CTA / SEO quick wins / 冷邮 / ROAS vs CPA / 留存 / A/B 测试 / 品牌调性 / LinkedIn ABM）。
+  - 验证：`faq.test.ts` 新增 11 条（hermetic 临时 LibSQL，red→green）；`agents.test.ts` 增断言 Director 含 faq_search 工具。实机：seed → GET /api/admin/faqs 返回 10 条；发 "How do I set up Google Ads conversion tracking?" → Director 调 `faqSearchTool` 并回答；发 "What is an ICP?" → intent=faq，答案基于 KB 内容。后端 102 tests 全绿。
+- 2026-07-26 **全部 4 项收尾 Done**：
+  - `tsc --noEmit` **0 error**（顺带修了 3 条历史 `getInstructions` 返回 `SystemMessage` 的类型告警；移除了无效的 `onStepFinish`——它不是 Agent 构造参数，只挂在 stream/generate 调用上，已被 middleware 的 `[intent]` 日志覆盖观测需求）。
+  - 终验：后端 **6 files / 102 tests**，UI **7 files / 101 tests** 全绿；实机 free 模型回复正常，`/api/admin/conversations`（43 对话，含 csat 字段）、`/api/admin/faqs`（10 条）均正常。

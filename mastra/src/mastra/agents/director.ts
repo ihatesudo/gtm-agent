@@ -3,6 +3,26 @@ import { Memory } from '@mastra/memory';
 import { ALL_GTM_TOOLS } from '../tools/gtm-tools.js';
 import { ALL_SPECIALIST_AGENTS } from './specialists.js';
 import { modelFromChoice } from '../model.js';
+import { sharedStorage } from '../storage/store.js';
+
+/**
+ * The Director's Memory instance, constructed once and reused for the agent's
+ * `memory` field below. Exported so tests and the admin view can verify it is
+ * wired to the shared LibSQL store (i.e. conversation history is actually
+ * persisted, not in-memory-only). Must be declared BEFORE the Agent so the
+ * agent constructor reads an initialized value (no TDZ).
+ */
+export const directorMemory = new Memory({
+  // Persist conversation threads/messages to the shared LibSQL store so
+  // history survives restarts and is queryable by the admin view. Without
+  // this, Memory is in-memory only and history lives solely in the client's
+  // localStorage.
+  storage: sharedStorage,
+  options: {
+    lastMessages: 50,
+    observationalMemory: true,
+  },
+});
 
 export const directorAgent = new Agent({
   id: 'director',
@@ -65,10 +85,5 @@ Only delegate when the user needs deep channel-specific execution work:
   model: modelFromChoice('director', 'gemini-2.5-flash'),
   tools: ALL_GTM_TOOLS,
   agents: ALL_SPECIALIST_AGENTS,
-  memory: new Memory({
-    options: {
-      lastMessages: 50,
-      observationalMemory: true,
-    },
-  }),
+  memory: directorMemory,
 });
