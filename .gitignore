@@ -28,4 +28,6 @@ agent_logs/
 
 # Local git worktrees (e.g. created by agents/tools)
 .worktrees/
+.zcode/
+
 

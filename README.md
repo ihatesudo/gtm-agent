@@ -24,6 +24,17 @@ salaries or copy-pasting out of a chat window.
 
 > **Stop briefing a chatbot. Start commanding a team.** ↓
 
+<table align="center">
+  <tr>
+    <td align="center"><img src="docs/screens/start-screen.png" width="400" alt="Start screen" /></td>
+    <td align="center"><img src="docs/screens/chat-screen.png" width="400" alt="Chat screen" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Start screen — pick a specialist and brief the team</sub></td>
+    <td align="center"><sub>Chat — the Director routes your brief to the right role</sub></td>
+  </tr>
+</table>
+
 ---
 
 ## Why this shape
