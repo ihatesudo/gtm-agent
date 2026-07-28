@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 from langchain.tools import tool
+from langchain_core.runnables import RunnableConfig
 
 # Deliverable output directory (relative to the repo root); created if missing.
 OUTPUT_DIR = Path("output").resolve()
@@ -309,20 +310,28 @@ def seth_quote_of_the_day() -> str:
 # --- Session memory tools ------------------------------------------------
 # Let the agent persist facts across turns and sessions. The active session slug
 # is injected into the runtime config by the REPL; these tools read it from the
-# configurable so the agent doesn't need to track it itself.
+# configurable so the agent doesn't need to track it itself. LangChain's @tool
+# auto-injects the runnable config into any parameter annotated as RunnableConfig.
 
-def _current_session_slug(config: dict | None) -> str | None:
-    """Pull the session slug out of the LangGraph runnable config."""
+def _current_session_slug(config) -> str | None:
+    """Pull the session slug out of the LangGraph runnable config.
+
+    Accepts a RunnableConfig (dict-like) or a plain dict, for testability.
+    """
     if not config:
         return None
+    # RunnableConfig is a TypedDict (dict subclass); .get works on both shapes.
     configurable = config.get("configurable", config)
+    if configurable is config:
+        # No "configurable" key — config itself might be the configurable dict.
+        return configurable.get("session_slug") or configurable.get("thread_id")
     return configurable.get("session_slug") or configurable.get("thread_id")
 
 
 @tool
 def remember(product: str = "", icp: str = "", brand_voice: str = "",
              goal: str = "", decision: str = "", notes: str = "",
-             config: dict | None = None) -> str:
+             config: RunnableConfig = None) -> str:
     """Save a fact to long-term memory so it persists across sessions.
 
     Call this when the user states something worth remembering for later:
@@ -364,7 +373,7 @@ def remember(product: str = "", icp: str = "", brand_voice: str = "",
 
 
 @tool
-def recall(config: dict | None = None) -> str:
+def recall(config: RunnableConfig = None) -> str:
     """Read everything remembered about the current session's project.
 
     Returns the full project memory (product, ICP, brand voice, goals,

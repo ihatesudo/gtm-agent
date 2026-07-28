@@ -176,3 +176,33 @@ class TestProjectMemoryDataclass:
         m = session.ProjectMemory(product="p", icp="i", goals=["g"], decisions=["d"], notes="n")
         d = m.to_dict()
         assert session.ProjectMemory.from_dict(d) == m
+
+
+# ---------------------------------------------------------------------------
+# get_checkpointer (the named gap — persistence backend selection)
+# ---------------------------------------------------------------------------
+
+class TestGetCheckpointer:
+    def test_returns_a_checkpointer(self):
+        """Always returns *something* usable — never raises."""
+        cp = session.get_checkpointer()
+        assert cp is not None
+        # Both SqliteSaver and InMemorySaver have put/get.
+        assert hasattr(cp, "aput") or hasattr(cp, "put")
+
+    def test_falls_back_to_memory_saver_on_sqlite_import_error(self, monkeypatch):
+        """If the sqlite backend can't be imported, we degrade to in-memory."""
+        # Sabotage the sqlite import inside get_checkpointer's try block.
+        import builtins
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "langgraph.checkpoint.sqlite":
+                raise ImportError("simulated: sqlite backend unavailable")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        cp = session.get_checkpointer()
+        # Should have fallen back to MemorySaver (InMemorySaver).
+        assert type(cp).__name__ in ("InMemorySaver", "MemorySaver")
