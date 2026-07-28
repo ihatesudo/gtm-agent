@@ -51,10 +51,11 @@ Auth: service account JSON inline in `GOOGLE_APPLICATION_CREDENTIALS` (Vertex AI
 - **Platform how-tos on demand.** Use `read_tool_guide` (e.g. `google-ads.md`) and `read_skill_reference` for deeper playbooks — don't dump them into the prompt unless needed.
 - **Respond in Chinese.** Professional, specific, actionable; avoid filler. Always end advice on a concrete next step.
 - **Both loaders are dependency-light.** `skills_loader` parses frontmatter by hand (no PyYAML); `roles_loader` uses PyYAML (already a transitive dep, declared in `pyproject.toml`). Keep them I/O-only — no prints/prompts.
+- **Bilingual roles.** Each role ships as a **pair**: `roles/<name>.en.yaml` + `roles/<name>.zh.yaml`. English is canonical (always required) and the default; Chinese is opt-in via `--language zh` or the `/lang` REPL command. The loader picks the variant by language with EN fallback, so a missing `.zh.yaml` degrades gracefully to English rather than disappearing. Persona / core_focus / when_to_use text lives in the YAML (in that language); structural labels in `render_role_block` switch language automatically.
 
 ## Editing rules
 
-- Adding a role → new `roles/<name>.yaml` (match the schema in `roles/director.yaml`); it auto-appears in `--list-roles`. Add it to the team table in `README.md`.
+- Adding a role → create **both** `roles/<name>.en.yaml` and `roles/<name>.zh.yaml` (match the schema in `roles/director.en.yaml`); they auto-appear in `--list-roles`. Add it to the team table in `README.md`.
 - Adding a skill → `skills/<name>/SKILL.md` with frontmatter (`name`, `description`, `metadata.version`); optionally map it into a role's `owned_skills`/`shared_skills`.
 - Adding a callable tool → `@tool` in `tools.py`, append to `ALL_TOOLS`, add a row in `roles/TOOLS.md` Layer 1.
 - New platform integration → `tools/integrations/<slug>.md` + a `tools/REGISTRY.md` row; reference the slug from a role's `preferred_tools` if it should default to it.

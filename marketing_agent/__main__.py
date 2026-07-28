@@ -194,13 +194,13 @@ def run_once(
     color: bool,
     skill: str | None = None,
     role: str | None = None,
-    language: str = "zh",
+    language: str = "en",
     provider: str | None = None,
 ) -> None:
     """Run one task: build the agent per the current toggle and stream the output.
 
-    ``skill``, ``role``, and ``provider`` are re-resolved each call so switching
-    mid-session takes effect on the next task.
+    ``skill``, ``role``, ``provider``, and ``language`` are re-resolved each call
+    so switching mid-session takes effect on the next task.
     """
     agent = build_agent(include_thoughts=show_thinking, skill=skill, role=role, language=language, provider=provider)
     so = sys.stdout
@@ -292,9 +292,9 @@ def _print_skill_status(skill: str | None) -> None:
 # Role menu
 # ---------------------------------------------------------------------------
 
-def _render_role_menu(color: bool) -> list[str]:
+def _render_role_menu(color: bool, language: str = "en") -> list[str]:
     """Print the role menu and return the ordered list of role names."""
-    roles = roles_loader.list_roles()
+    roles = roles_loader.list_roles(language)
     if not roles:
         print("  (no roles installed — expected a top-level roles/ folder)\n")
         return []
@@ -308,22 +308,22 @@ def _render_role_menu(color: bool) -> list[str]:
         else:
             line = f"    {idx:>2}. {r.name}"
         title = r.title or r.name
-        print(f"{line}  — {title}")
+        print(f"{line}  —  {title}")
     print("")
     return names
 
 
-def print_role_menu(color: bool) -> None:
+def print_role_menu(color: bool, language: str = "en") -> None:
     """Show the role menu with a header and count."""
-    roles = roles_loader.list_roles()
+    roles = roles_loader.list_roles(language)
     print(f"\n👥 {len(roles)} marketing roles available:\n")
-    _render_role_menu(color)
+    _render_role_menu(color, language)
     print("  Use /role <name|number> to switch, or /role to pick interactively.\n")
 
 
-def pick_role(color: bool) -> str | None:
+def pick_role(color: bool, language: str = "en") -> str | None:
     """Show the menu and prompt for a choice. Returns a role name or None."""
-    names = _render_role_menu(color)
+    names = _render_role_menu(color, language)
     if not names:
         return None
     try:
@@ -339,7 +339,7 @@ def pick_role(color: bool) -> str | None:
             return names[i - 1]
         print(f"  number out of range (1–{len(names)}); no role selected.\n")
         return None
-    found = roles_loader.find_role(choice)
+    found = roles_loader.find_role(choice, language)
     if found is None:
         print(f"  unknown role: {choice!r}  (try /roles to list)\n")
         return None
@@ -351,6 +351,15 @@ def _print_role_status(role: str | None) -> None:
         print(f"  → active role: {role} 👥\n")
     else:
         print("  → active role: none (Director base)\n")
+
+
+# ---------------------------------------------------------------------------
+# Language toggle
+# ---------------------------------------------------------------------------
+
+def _print_lang_status(language: str) -> None:
+    label = "English (en)" if language == "en" else "中文 (zh)"
+    print(f"  → language: {label} 🌐\n")
 
 
 # ---------------------------------------------------------------------------
@@ -417,7 +426,7 @@ def _print_provider_status(provider: str | None) -> None:
         print("  → active provider: gemini (default)\n")
 
 
-def _prompt_prefix(skill: str | None, role: str | None, provider: str | None) -> str:
+def _prompt_prefix(skill: str | None, role: str | None, provider: str | None, language: str = "en") -> str:
     tags = []
     if role:
         tags.append(f"role:{role}")
@@ -425,6 +434,8 @@ def _prompt_prefix(skill: str | None, role: str | None, provider: str | None) ->
         tags.append(f"skill:{skill}")
     if provider and provider != "gemini":
         tags.append(f"provider:{provider}")
+    if language and language != "en":
+        tags.append(f"lang:{language}")
     if tags:
         return f"📝 [{' · '.join(tags)}] > "
     return "📝 > "
@@ -440,21 +451,24 @@ def repl(
     default_skill: str | None = None,
     default_role: str | None = None,
     default_provider: str | None = None,
+    default_language: str = "en",
 ) -> None:
     show = default_thinking
     skill = default_skill
     role = default_role
     provider = default_provider
+    language = default_language
     print("Marketing agent interactive mode. Type a task and press Enter; Ctrl-D/Ctrl-C to exit.")
     status = f"  streamed thinking: {'on' if show else 'off'}   "
     status += f"active role: {role or 'none'}   "
     status += f"active skill: {skill or 'none'}   "
     status += f"active provider: {provider or 'gemini'}   "
-    status += "(/roles · /role · /skills · /skill · /providers · /provider · /think · /help)\n"
+    status += f"language: {language}   "
+    status += "(/roles · /role · /skills · /skill · /providers · /provider · /lang · /think · /help)\n"
     print(status)
     while True:
         try:
-            line = input(_prompt_prefix(skill, role, provider)).strip()
+            line = input(_prompt_prefix(skill, role, provider, language)).strip()
         except (EOFError, KeyboardInterrupt):
             print("\nbye 👋")
             break
@@ -474,27 +488,38 @@ def repl(
                 show = False
                 _print_thinking_status(show)
             elif cmd == "/roles":
-                print_role_menu(color)
+                print_role_menu(color, language)
             elif cmd == "/role":
                 picked = arg.strip() or None
                 if picked:
                     if picked.isdigit():
-                        names = [r.name for r in roles_loader.list_roles()]
+                        names = [r.name for r in roles_loader.list_roles(language)]
                         i = int(picked)
                         picked_name = names[i - 1] if 1 <= i <= len(names) else None
                     else:
-                        found = roles_loader.find_role(picked)
+                        found = roles_loader.find_role(picked, language)
                         picked_name = found.name if found else None
                     role = picked_name
                     _print_role_status(role)
                     if role is None:
                         print("  unknown role; active role unchanged or cleared.\n")
                 else:
-                    role = pick_role(color)
+                    role = pick_role(color, language)
                     _print_role_status(role)
             elif cmd == "/role-off":
                 role = None
                 _print_role_status(role)
+            elif cmd in ("/lang", "/language"):
+                picked = arg.strip().lower()
+                if picked in ("en", "zh", "english", "chinese", "cn"):
+                    language = "zh" if picked in ("zh", "chinese", "cn") else "en"
+                    _print_lang_status(language)
+                elif not picked:
+                    # Toggle between the two.
+                    language = "zh" if language == "en" else "en"
+                    _print_lang_status(language)
+                else:
+                    print(f"  unknown language: {arg!r}  (supported: en, zh)\n")
             elif cmd == "/skills":
                 print_skill_menu(color)
             elif cmd == "/skill":
@@ -541,6 +566,7 @@ def repl(
                     "  /roles list roles · /role [name|n] pick/switch · /role-off clear\n"
                     "  /skills list skills · /skill [name|n] pick/switch · /skill-off clear\n"
                     "  /providers list providers · /provider [name|n] pick/switch\n"
+                    "  /lang [en|zh] switch language (toggle if no arg) · default: en\n"
                     "  /think toggle · /think-on · /think-off · /quit to exit\n"
                 )
             elif cmd in ("/quit", "/exit"):
@@ -550,7 +576,7 @@ def repl(
                 print(f"  unknown command: {line}  (try /help)\n")
             continue
 
-        run_once(line, show, color, skill, role, provider=provider)
+        run_once(line, show, color, skill, role, language=language, provider=provider)
 
 
 def main() -> None:
@@ -587,9 +613,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--language",
-        choices=("zh", "en"),
-        default="zh",
-        help="Response and system-prompt language (default: zh).",
+        choices=("en", "zh"),
+        default="en",
+        help="Response and system-prompt language (default: en).",
     )
     parser.add_argument(
         "--list-roles",
@@ -641,7 +667,7 @@ def main() -> None:
 
     role = None
     if args.role:
-        found = roles_loader.find_role(args.role)
+        found = roles_loader.find_role(args.role, args.language)
         if found is None:
             print(f"error: unknown role {args.role!r}. Run with --list-roles to see options.")
             sys.exit(2)
@@ -668,7 +694,7 @@ def main() -> None:
     if args.task:
         run_once(" ".join(args.task), show_thinking, color, skill, role, args.language, provider)
     else:
-        repl(show_thinking, color, default_skill=skill, default_role=role, default_provider=provider)
+        repl(show_thinking, color, default_skill=skill, default_role=role, default_provider=provider, default_language=args.language)
 
 
 if __name__ == "__main__":

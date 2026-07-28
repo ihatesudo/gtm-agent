@@ -215,7 +215,7 @@ def build_agent(
     include_thoughts: bool = True,
     skill: str | None = None,
     role: str | None = None,
-    language: str = "zh",
+    language: str = "en",
     provider: str | None = None,
 ):
     """Build and return the compiled LangGraph ReAct agent.
@@ -243,7 +243,7 @@ def build_agent(
 
 
 def _compose_prompt(
-    skill: str | None, role: str | None = None, language: str = "zh"
+    skill: str | None, role: str | None = None, language: str = "en"
 ) -> str:
     """Return the system prompt: Director base + (optional) role + (optional) skill."""
     is_english = language.lower().startswith("en")

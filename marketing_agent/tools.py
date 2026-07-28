@@ -168,5 +168,142 @@ def read_tool_guide(filename: str) -> str:
         return f"[{exc}. {hint}]"
 
 
+# --- Virtual Seth citation tool -----------------------------------------
+# Backs the "seth" role: returns real Seth Godin blog posts matching a concept,
+# so every critique in the seth-review skill cites a primary source. Reads from
+# seth_index.json produced by scripts/build_seth_index.py.
+
+_SETH_INDEX_PATH = OUTPUT_DIR.parent / "seth_index.json"
+_seth_index_cache: dict | None = None
+
+
+def _load_seth_index() -> dict:
+    global _seth_index_cache
+    if _seth_index_cache is None:
+        if not _SETH_INDEX_PATH.is_file():
+            raise FileNotFoundError(
+                "seth_index.json not found. Run: python scripts/build_seth_index.py"
+            )
+        import json
+        _seth_index_cache = json.loads(_SETH_INDEX_PATH.read_text(encoding="utf-8"))
+    return _seth_index_cache
+
+
+def _refresh_seth_index() -> None:
+    """Drop the cached index (call after rebuilding seth_index.json)."""
+    global _seth_index_cache
+    _seth_index_cache = None
+
+
+@tool
+def lookup_seth_post(concept: str, limit: int = 3) -> str:
+    """Find real Seth Godin blog posts about a marketing concept.
+
+    Use this whenever you make a claim about how Seth thinks — ground it in a
+    post he actually wrote. Returns the title, date, URL, and a quotable line
+    from each matching post, newest-first.
+
+    Valid concepts (pass the id, case-insensitive; unique prefixes allowed):
+    trust, story, status, connection, permission, art, ship, tribe, remarkable,
+    people-like-us, empathy, generosity, dip, purple-cow, freedom, practice,
+    smallest-viable, show-up, resistance, change, responsibility, audience, fear.
+
+    If unsure which concept fits, "trust" or "story" always have hits.
+
+    Args:
+        concept: A concept id from the list above, e.g. "trust" or "purple-cow".
+        limit: Max posts to return (default 3, max 5).
+    """
+    try:
+        index = _load_seth_index()
+    except FileNotFoundError as exc:
+        return f"[{exc}]"
+
+    concepts = index.get("concepts", {})
+    q = concept.strip().lower()
+    # Exact match, then unique prefix.
+    cid = q if q in concepts else next(
+        (k for k in concepts if k.startswith(q)), None
+    )
+    if cid is None:
+        valid = ", ".join(sorted(concepts))
+        return f"[Unknown concept: {concept!r}. Valid: {valid}.]"
+    posts = concepts[cid][: max(1, min(limit, 5))]
+    if not posts:
+        return f"[No posts indexed for concept '{cid}'.]"
+    lines = [f"Concept: {cid} — {len(concepts[cid])} posts indexed, showing {len(posts)}."]
+    for p in posts:
+        line = p.get("line", "").strip()
+        lines.append(
+            f"- \"{line}\" — {p.get('title', '?')} ({p.get('date', '?')})\n  {p.get('url', '')}"
+        )
+    return "\n".join(lines)
+
+
+@tool
+def seth_quote_of_the_day() -> str:
+    """Get today's Seth Godin aphorism with a one-line reframe for a marketing intern.
+
+    Rotates deterministically by day (same quote for everyone on a given day)
+    and balances concept coverage so the intern sees the whole framework over
+    time, not the same idea three days running. Pairs the quote with a prompt
+    that turns it into an action.
+
+    No arguments — call it once at the start of a session, or when the intern
+    asks for their daily Seth.
+    """
+    import datetime as _dt
+
+    try:
+        index = _load_seth_index()
+    except FileNotFoundError as exc:
+        return f"[{exc}]"
+    aphorisms = index.get("aphorisms", [])
+    if not aphorisms:
+        return "[No aphorisms indexed yet. Run scripts/build_seth_index.py.]"
+
+    # Deterministic daily pick: rotate through top-N, one per day.
+    # Use a curated pool of the strongest 60 to keep quality high.
+    pool = aphorisms[: min(60, len(aphorisms))]
+    day_of_epoch = _dt.date.today().toordinal()
+    chosen = pool[day_of_epoch % len(pool)]
+
+    # Map the quote's concept to a one-line reframe (the "what this asks of you").
+    _REFRAMES = {
+        "trust": "Before you write any copy today: would a customer who took it literally feel respected?",
+        "story": "What story does your prospect tell themselves about your product? That's the product.",
+        "status": "Name one way using your product raises the user's status in their peer group.",
+        "connection": "Does your work connect people to each other — or only to you?",
+        "permission": "Are you earning attention, or renting it?",
+        "art": "Where in your work today are you making art, and where are you just executing a brief?",
+        "ship": "What's the one thing you can ship today that you've been polishing for too long?",
+        "tribe": "Who are the 'people like us' for what you're making? Write the sentence.",
+        "remarkable": "Would someone remark on what you shipped? If not, it's invisible.",
+        "people-like-us": "Before any copy: name the 'us'. If you can't, you have a demographic, not a market.",
+        "empathy": "What does your customer fear? Write it down before you write the headline.",
+        "generosity": "What can you give away today that your competitors would charge for?",
+        "dip": "Where are you in the dip — and is this a dip worth pushing through, or a cul-de-sac?",
+        "purple-cow": "Find the one thing about your product that's genuinely remarkable. If there isn't one, that's the work.",
+        "freedom": "What fear of failure is shaping your marketing? Name it.",
+        "practice": "Marketing is a practice. What did you get reps on today?",
+        "smallest-viable": "Shrink your target market until it's small enough to dominate.",
+        "show-up": "Showing up beats brilliance. What did you consistently show up for this week?",
+        "resistance": "The resistance is loudest right before you ship. Notice it, then ship anyway.",
+        "change": "If your campaign doesn't change anything, it's not marketing — it's maintenance.",
+        "responsibility": "Take responsibility for one outcome you've been blaming on the market.",
+        "audience": "Your audience is not 'everyone.' Make it smaller and more specific.",
+        "fear": "What's the fear underneath your prospect's objection? Speak to that, not the surface.",
+    }
+    primary_concept = chosen.get("concepts", ["trust"])[0]
+    reframe = _REFRAMES.get(primary_concept, "What does this ask of you today, in one sentence?")
+    return (
+        f"Today's Seth ({chosen.get('date', '')}):\n"
+        f"\"{chosen['text']}\"\n"
+        f"— {chosen.get('title', '')}\n"
+        f"{chosen.get('url', '')}\n\n"
+        f"Today: {reframe}"
+    )
+
+
 # Exported for the agent to use.
-ALL_TOOLS = [web_search, save_asset, read_asset, list_assets, list_skills, read_skill_reference, read_tool_guide]
+ALL_TOOLS = [web_search, save_asset, read_asset, list_assets, list_skills, read_skill_reference, read_tool_guide, lookup_seth_post, seth_quote_of_the_day]
