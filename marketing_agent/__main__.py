@@ -259,10 +259,11 @@ def _render_skill_menu(color: bool) -> list[str]:
             names.append(s.name)
             idx = len(names)
             desc = skills_loader.short_description(s.description, width=70)
+            ext_tag = " (ext)" if s.external else ""
             if color:
-                line = f"    {idx:>2}. {_BOLD}{s.name}{_RESET}"
+                line = f"    {idx:>2}. {_BOLD}{s.name}{_RESET}{ext_tag}"
             else:
-                line = f"    {idx:>2}. {s.name}"
+                line = f"    {idx:>2}. {s.name}{ext_tag}"
             print(f"{line}  — {desc}" if desc else line)
     print("")
     return names

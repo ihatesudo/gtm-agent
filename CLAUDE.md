@@ -57,6 +57,7 @@ Auth: service account JSON inline in `GOOGLE_APPLICATION_CREDENTIALS` (Vertex AI
 
 - Adding a role → create **both** `roles/<name>.en.yaml` and `roles/<name>.zh.yaml` (match the schema in `roles/director.en.yaml`); they auto-appear in `--list-roles`. Add it to the team table in `README.md`.
 - Adding a skill → `skills/<name>/SKILL.md` with frontmatter (`name`, `description`, `metadata.version`); optionally map it into a role's `owned_skills`/`shared_skills`.
+- **External skill suites** → add the root path to `EXTERNAL_SKILLS_ROOTS` in `skills_loader.py`. Skills there are discovered alongside native `skills/`, tagged `external=True`, marked `(ext)` in the menu, and routed to a "Founder / SMTM" category by default. Native skills always win on a name collision. Use this for upstream-maintained suites (e.g. money-hxn at `~/tools/skills/money-hxn`) so they stay syncable without forking into `skills/`.
 - Adding a callable tool → `@tool` in `tools.py`, append to `ALL_TOOLS`, add a row in `roles/TOOLS.md` Layer 1.
 - New platform integration → `tools/integrations/<slug>.md` + a `tools/REGISTRY.md` row; reference the slug from a role's `preferred_tools` if it should default to it.
 

@@ -232,6 +232,8 @@ demand whenever the agent needs the playbook.
 | **SEO** | Compounding organic growth. Technical health, search intent, content gaps, links. |
 | **B2B / LinkedIn** | High-value decision-makers. ABM, target accounts, thought leadership, the long sales cycle. |
 | **Lifecycle & Retention** | The customers you already won. Email/SMS flows, segments, churn, lifetime value. |
+| **Virtual Seth** | Mentoring interns. Runs ideas through Seth Godin's five-link chain, cites his real posts. |
+| **Solo Founder** | The whole business, not just marketing. Orchestrates the SMTM suite (idea → strategy → product → ops → finance → review council). |
 
 Switch into any of them mid-conversation — `--role seo`, then `/role social-ads` —
 and the agent picks up that specialist's voice for the next task.

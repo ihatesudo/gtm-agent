@@ -23,7 +23,7 @@ collection uses single-line ``name`` / ``description`` values, optionally quoted
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
@@ -33,6 +33,15 @@ SKILLS_DIR = _ROOT / "skills"
 TOOLS_DIR = _ROOT / "tools"
 INTEGRATIONS_DIR = TOOLS_DIR / "integrations"
 
+# External skill roots — skills discovered here are merged into the catalogue
+# alongside native skills/ but tagged ``external=True`` so menus can mark them.
+# Native skills always win on a name collision (external skills are supplemental).
+# A root is typically a sibling skill suite maintained upstream (e.g. the
+# money-hxn "Show Me The Money" solo-founder suite at ~/tools/skills/money-hxn).
+EXTERNAL_SKILLS_ROOTS: list[Path] = [
+    Path.home() / "tools" / "skills" / "money-hxn",
+]
+
 
 @dataclass(frozen=True)
 class Skill:
@@ -41,6 +50,7 @@ class Skill:
     version: str
     skill_dir: Path
     skill_md_path: Path
+    external: bool = False
 
     @property
     def references_dir(self) -> Path:
@@ -88,7 +98,7 @@ def _split_frontmatter(text: str) -> tuple[dict[str, str], str]:
     return meta, body
 
 
-def _parse_skill_md(path: Path) -> Skill | None:
+def _parse_skill_md(path: Path, external: bool = False) -> Skill | None:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
@@ -101,7 +111,16 @@ def _parse_skill_md(path: Path) -> Skill | None:
         version=meta.get("version", "").strip(),
         skill_dir=path.parent,
         skill_md_path=path,
+        external=external,
     )
+
+
+def _discover_in(root: Path, external: bool) -> list[Skill]:
+    """Parse every ``<root>/<name>/SKILL.md``. Returns [] if root is missing."""
+    if not root.is_dir():
+        return []
+    return [s for s in (_parse_skill_md(p, external=external)
+                        for p in sorted(root.glob("*/SKILL.md"))) if s]
 
 
 # ---------------------------------------------------------------------------
@@ -110,12 +129,16 @@ def _parse_skill_md(path: Path) -> Skill | None:
 
 @lru_cache(maxsize=1)
 def _skills_tuple() -> tuple[Skill, ...]:
-    if not SKILLS_DIR.is_dir():
-        return ()
-    skills = [
-        s for s in (_parse_skill_md(p) for p in sorted(SKILLS_DIR.glob("*/SKILL.md"))) if s
-    ]
-    return tuple(sorted(skills, key=lambda s: s.name))
+    # Native skills first; external skills merge in but lose on name collision
+    # so the repo's own playbooks always win.
+    native = _discover_in(SKILLS_DIR, external=False)
+    native_names = {s.name for s in native}
+    merged = list(native)
+    for root in EXTERNAL_SKILLS_ROOTS:
+        for s in _discover_in(root, external=True):
+            if s.name not in native_names:
+                merged.append(s)
+    return tuple(sorted(merged, key=lambda s: s.name))
 
 
 def refresh_skills() -> None:
@@ -267,6 +290,10 @@ def categorize(skills: list[Skill]) -> list[tuple[str, list[Skill]]]:
             if needle in s.name:
                 cat = label
                 break
+        # External skills with no native-category match land in a dedicated
+        # "Founder / SMTM" bucket so they group together (the money-hxn suite).
+        if cat == "General" and s.external:
+            cat = "Founder / SMTM"
         buckets.setdefault(cat, []).append(s)
     # Stable category order: known categories first (in definition order), then General.
     order = []
