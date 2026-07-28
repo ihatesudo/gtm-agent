@@ -9,6 +9,7 @@ All tools are designed to be "actually usable, with no extra API keys":
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from langchain.tools import tool
@@ -305,5 +306,82 @@ def seth_quote_of_the_day() -> str:
     )
 
 
+# --- Session memory tools ------------------------------------------------
+# Let the agent persist facts across turns and sessions. The active session slug
+# is injected into the runtime config by the REPL; these tools read it from the
+# configurable so the agent doesn't need to track it itself.
+
+def _current_session_slug(config: dict | None) -> str | None:
+    """Pull the session slug out of the LangGraph runnable config."""
+    if not config:
+        return None
+    configurable = config.get("configurable", config)
+    return configurable.get("session_slug") or configurable.get("thread_id")
+
+
+@tool
+def remember(product: str = "", icp: str = "", brand_voice: str = "",
+             goal: str = "", decision: str = "", notes: str = "",
+             config: dict | None = None) -> str:
+    """Save a fact to long-term memory so it persists across sessions.
+
+    Call this when the user states something worth remembering for later:
+    what the product is, who it's for (ICP), the brand voice, a goal, or a
+    decision they've made. Each field is optional — only set the ones you're
+    recording. ``goal`` and ``decision`` append to lists; the others replace.
+
+    Args:
+        product: One-line description of the product/service.
+        icp: The ideal customer / "people like us" — who it's for.
+        brand_voice: Tone/style guidance for copy.
+        goal: A single goal to add to the goals list.
+        decision: A single decision to record (with rationale if useful).
+        notes: Free-form notes that don't fit the other fields.
+    """
+    from . import session
+
+    slug = _current_session_slug(config)
+    if not slug:
+        return "[remember: no active session — fact not saved]"
+    fields = {}
+    if product:
+        fields["product"] = product
+    if icp:
+        fields["icp"] = icp
+    if brand_voice:
+        fields["brand_voice"] = brand_voice
+    if goal:
+        fields["goals"] = goal
+    if decision:
+        fields["decisions"] = decision
+    if notes:
+        fields["notes"] = notes
+    if not fields:
+        return "[remember: nothing to save — pass at least one field]"
+    mem = session.update_memory(slug, **fields)
+    saved = ", ".join(f"{k}={v}" for k, v in fields.items())
+    return f"Saved to memory: {saved}. Current memory: {mem.to_dict()}"
+
+
+@tool
+def recall(config: dict | None = None) -> str:
+    """Read everything remembered about the current session's project.
+
+    Returns the full project memory (product, ICP, brand voice, goals,
+    decisions, notes). Call this at the start of a task if the context seems
+    relevant — or when the user asks "what do you remember about us?".
+    """
+    from . import session
+
+    slug = _current_session_slug(config)
+    if not slug:
+        return "[recall: no active session]"
+    mem = session.load_memory(slug)
+    if mem.is_empty():
+        return "[recall: nothing remembered yet for this session]"
+    return json.dumps(mem.to_dict(), ensure_ascii=False, indent=2)
+
+
 # Exported for the agent to use.
-ALL_TOOLS = [web_search, save_asset, read_asset, list_assets, list_skills, read_skill_reference, read_tool_guide, lookup_seth_post, seth_quote_of_the_day]
+ALL_TOOLS = [web_search, save_asset, read_asset, list_assets, list_skills, read_skill_reference, read_tool_guide, lookup_seth_post, seth_quote_of_the_day, remember, recall]
+

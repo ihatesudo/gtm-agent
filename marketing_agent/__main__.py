@@ -50,6 +50,7 @@ import argparse
 import asyncio
 import os
 import sys
+import time
 
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
@@ -108,7 +109,7 @@ def _iter_blocks(chunk, capabilities: dict | None = None) -> list[tuple[str, str
 
 async def _stream_run(
     agent, user_input: str, show_thinking: bool, color: bool,
-    provider: str | None = None,
+    provider: str | None = None, session_slug: str | None = None,
 ) -> None:
     """Stream output token by token via astream_events(v2).
 
@@ -120,6 +121,10 @@ async def _stream_run(
 
     When *provider* is set, its capabilities (e.g. ``thinking`` support) are
     looked up so non-thinking models are handled correctly.
+
+    When *session_slug* is set, it's passed as ``thread_id`` (so the checkpointer
+    keeps multi-turn history) and ``session_slug`` (so the memory tools know
+    which project memory to read/write).
     """
     capabilities = None
     if provider and provider != "gemini":
@@ -127,6 +132,11 @@ async def _stream_run(
         capabilities = cfg.capabilities
     so = sys.stdout
     state = {"role": None}
+
+    # LangGraph runnable config: thread_id keys the checkpointer; session_slug
+    # is read by the remember/recall tools to find the right project memory.
+    run_config = {"configurable": {"thread_id": session_slug or "default",
+                                   "session_slug": session_slug}}
 
     def close_think() -> None:
         if state["role"] == "think":
@@ -147,6 +157,7 @@ async def _stream_run(
     async for ev in agent.astream_events(
         {"messages": [HumanMessage(content=user_input)]},
         version="v2",
+        config=run_config,
     ):
         kind = ev["event"]
 
@@ -196,15 +207,24 @@ def run_once(
     role: str | None = None,
     language: str = "en",
     provider: str | None = None,
+    session_slug: str | None = None,
 ) -> None:
     """Run one task: build the agent per the current toggle and stream the output.
 
-    ``skill``, ``role``, ``provider``, and ``language`` are re-resolved each call
-    so switching mid-session takes effect on the next task.
+    ``skill``, ``role``, ``provider``, ``language``, and ``session_slug`` are
+    re-resolved each call so switching mid-session takes effect on the next task.
     """
-    agent = build_agent(include_thoughts=show_thinking, skill=skill, role=role, language=language, provider=provider)
+    agent = build_agent(
+        include_thoughts=show_thinking, skill=skill, role=role,
+        language=language, provider=provider, session_slug=session_slug,
+    )
+    if session_slug:
+        from . import session as session_mod
+        session_mod.touch_session(session_slug)
     so = sys.stdout
     tags = []
+    if session_slug:
+        tags.append(f"session: {session_slug}")
     if role:
         tags.append(f"role: {role}")
     if skill:
@@ -214,7 +234,7 @@ def run_once(
     label = f" ({', '.join(tags)})" if tags else ""
     so.write(f"\n🤖 agent starting{label}...\n")
     so.flush()
-    asyncio.run(_stream_run(agent, user_input, show_thinking, color, provider))
+    asyncio.run(_stream_run(agent, user_input, show_thinking, color, provider, session_slug))
 
 
 def _print_thinking_status(show: bool) -> None:
@@ -426,8 +446,11 @@ def _print_provider_status(provider: str | None) -> None:
         print("  → active provider: gemini (default)\n")
 
 
-def _prompt_prefix(skill: str | None, role: str | None, provider: str | None, language: str = "en") -> str:
+def _prompt_prefix(skill: str | None, role: str | None, provider: str | None,
+                   language: str = "en", session_slug: str | None = None) -> str:
     tags = []
+    if session_slug:
+        tags.append(f"session:{session_slug}")
     if role:
         tags.append(f"role:{role}")
     if skill:
@@ -452,23 +475,33 @@ def repl(
     default_role: str | None = None,
     default_provider: str | None = None,
     default_language: str = "en",
+    default_session: str | None = None,
 ) -> None:
     show = default_thinking
     skill = default_skill
     role = default_role
     provider = default_provider
     language = default_language
+    session_slug = default_session
+    # Auto-resume the most recent session if none was given, so context carries
+    # over by default — but only if sessions exist.
+    if not session_slug:
+        from . import session as session_mod
+        recent = session_mod.list_sessions()
+        if recent:
+            session_slug = recent[0].slug
     print("Marketing agent interactive mode. Type a task and press Enter; Ctrl-D/Ctrl-C to exit.")
     status = f"  streamed thinking: {'on' if show else 'off'}   "
     status += f"active role: {role or 'none'}   "
     status += f"active skill: {skill or 'none'}   "
     status += f"active provider: {provider or 'gemini'}   "
     status += f"language: {language}   "
-    status += "(/roles · /role · /skills · /skill · /providers · /provider · /lang · /think · /help)\n"
+    status += f"session: {session_slug or 'none (stateless)'}   "
+    status += "(/roles · /role · /skills · /skill · /providers · /provider · /session · /lang · /think · /help)\n"
     print(status)
     while True:
         try:
-            line = input(_prompt_prefix(skill, role, provider, language)).strip()
+            line = input(_prompt_prefix(skill, role, provider, language, session_slug)).strip()
         except (EOFError, KeyboardInterrupt):
             print("\nbye 👋")
             break
@@ -520,6 +553,106 @@ def repl(
                     _print_lang_status(language)
                 else:
                     print(f"  unknown language: {arg!r}  (supported: en, zh)\n")
+            elif cmd == "/sessions":
+                from . import session as session_mod
+                sessions = session_mod.list_sessions()
+                if not sessions:
+                    print("  (no sessions yet — use /session-new <title>)\n")
+                else:
+                    print("")
+                    for i, m in enumerate(sessions, 1):
+                        marker = " ← active" if m.slug == session_slug else ""
+                        print(f"    {i:>2}. {m.slug}  —  {m.title}{marker}")
+                    print("\n  /session <slug|n> to resume, /session-new <title> to create.\n")
+            elif cmd in ("/session", "/session-new", "/session-list"):
+                from . import session as session_mod
+                if cmd == "/session-new":
+                    title = arg.strip()
+                    if not title:
+                        print("  usage: /session-new <title>\n")
+                    else:
+                        meta = session_mod.create_session(title=title, language=language)
+                        session_slug = meta.slug
+                        print(f"  → created + active session: {session_slug} 🗂️\n")
+                elif cmd == "/session":
+                    picked = arg.strip()
+                    if not picked:
+                        # interactive picker
+                        sessions = session_mod.list_sessions()
+                        if not sessions:
+                            print("  (no sessions — use /session-new <title>)\n")
+                        else:
+                            print("")
+                            for i, m in enumerate(sessions, 1):
+                                print(f"    {i:>2}. {m.slug}  —  {m.title}")
+                            try:
+                                choice = input("  Resume session (slug or number, Enter=cancel) > ").strip()
+                            except (EOFError, KeyboardInterrupt):
+                                choice = ""
+                            if choice:
+                                if choice.isdigit():
+                                    idx = int(choice)
+                                    sessions = session_mod.list_sessions()
+                                    if 1 <= idx <= len(sessions):
+                                        session_slug = sessions[idx - 1].slug
+                                elif session_mod.get_session(choice):
+                                    session_slug = choice
+                                else:
+                                    print(f"  unknown session: {choice!r}\n")
+                            if session_slug:
+                                session_mod.touch_session(session_slug)
+                                print(f"  → active session: {session_slug} 🗂️\n")
+                    else:
+                        meta = session_mod.get_session(picked)
+                        if meta:
+                            session_slug = meta.slug
+                            session_mod.touch_session(session_slug)
+                            print(f"  → active session: {session_slug} 🗂️\n")
+                        else:
+                            print(f"  unknown session: {picked!r}  (try /sessions)\n")
+                elif cmd == "/session-list":
+                    sessions = session_mod.list_sessions()
+                    if not sessions:
+                        print("  (no sessions yet)\n")
+                    else:
+                        print("")
+                        for i, m in enumerate(sessions, 1):
+                            print(f"    {i:>2}. {m.slug}  —  {m.title}  (last used {time.strftime('%Y-%m-%d', time.localtime(m.last_used))})")
+                        print("")
+            elif cmd == "/session-off":
+                session_slug = None
+                print("  → session cleared (stateless until /session or /session-new)\n")
+            elif cmd in ("/remember", "/recall"):
+                from . import session as session_mod
+                if not session_slug:
+                    print("  no active session — use /session-new <title> first to enable memory.\n")
+                elif cmd == "/recall":
+                    mem = session_mod.load_memory(session_slug)
+                    if mem.is_empty():
+                        print("  (nothing remembered yet — facts saved via the agent or /remember)\n")
+                    else:
+                        import json as _json
+                        print("  " + _json.dumps(mem.to_dict(), ensure_ascii=False, indent=2).replace("\n", "\n  ") + "\n")
+                else:  # /remember — quick manual save
+                    if not arg.strip():
+                        print("  usage: /remember <key>=<value>  (product=... icp=... goal=... decision=... notes=...)\n")
+                    else:
+                        fields = {}
+                        for pair in arg.split("|"):
+                            if "=" in pair:
+                                k, v = pair.split("=", 1)
+                                k, v = k.strip(), v.strip()
+                                if k in ("goal", "goals"):
+                                    fields["goals"] = v
+                                elif k in ("decision", "decisions"):
+                                    fields["decisions"] = v
+                                elif k in ("product", "icp", "brand_voice", "notes"):
+                                    fields[k] = v
+                        if fields:
+                            session_mod.update_memory(session_slug, **fields)
+                            print(f"  → remembered: {', '.join(fields)}\n")
+                        else:
+                            print("  no valid fields parsed. Example: /remember product=Acme app | icp=solo founders\n")
             elif cmd == "/skills":
                 print_skill_menu(color)
             elif cmd == "/skill":
@@ -567,6 +700,8 @@ def repl(
                     "  /skills list skills · /skill [name|n] pick/switch · /skill-off clear\n"
                     "  /providers list providers · /provider [name|n] pick/switch\n"
                     "  /lang [en|zh] switch language (toggle if no arg) · default: en\n"
+                    "  /sessions list · /session [slug] resume · /session-new <title> create · /session-off clear\n"
+                    "  /remember key=val save · /recall show memory (manual; agent does this automatically too)\n"
                     "  /think toggle · /think-on · /think-off · /quit to exit\n"
                 )
             elif cmd in ("/quit", "/exit"):
@@ -576,7 +711,7 @@ def repl(
                 print(f"  unknown command: {line}  (try /help)\n")
             continue
 
-        run_once(line, show, color, skill, role, language=language, provider=provider)
+        run_once(line, show, color, skill, role, language=language, provider=provider, session_slug=session_slug)
 
 
 def main() -> None:
@@ -616,6 +751,20 @@ def main() -> None:
         choices=("en", "zh"),
         default="en",
         help="Response and system-prompt language (default: en).",
+    )
+    parser.add_argument(
+        "--session",
+        dest="session",
+        default=None,
+        metavar="SLUG",
+        help="Resume a session by slug (persists conversation + project memory across restarts).",
+    )
+    parser.add_argument(
+        "--new-session",
+        dest="new_session",
+        default=None,
+        metavar="TITLE",
+        help="Create + activate a new session with the given title.",
     )
     parser.add_argument(
         "--list-roles",
@@ -691,10 +840,25 @@ def main() -> None:
 
     show_thinking = True if args.thinking is None else args.thinking
 
+    # Resolve session: --new-session creates one, --session resumes one.
+    session_slug = args.session
+    if args.new_session:
+        from . import session as session_mod
+        meta = session_mod.create_session(title=args.new_session, language=args.language)
+        session_slug = meta.slug
+    elif session_slug:
+        from . import session as session_mod
+        if not session_mod.get_session(session_slug):
+            print(f"error: unknown session {session_slug!r}. Run without --session to auto-resume the latest.")
+            sys.exit(2)
+
     if args.task:
-        run_once(" ".join(args.task), show_thinking, color, skill, role, args.language, provider)
+        run_once(" ".join(args.task), show_thinking, color, skill, role,
+                 language=args.language, provider=provider, session_slug=session_slug)
     else:
-        repl(show_thinking, color, default_skill=skill, default_role=role, default_provider=provider, default_language=args.language)
+        repl(show_thinking, color, default_skill=skill, default_role=role,
+             default_provider=provider, default_language=args.language,
+             default_session=session_slug)
 
 
 if __name__ == "__main__":

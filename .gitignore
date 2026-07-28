@@ -30,4 +30,7 @@ agent_logs/
 .worktrees/
 .zcode/
 
+# Agent session + memory state (conversation history, project memory)
+.sessions/
+
 

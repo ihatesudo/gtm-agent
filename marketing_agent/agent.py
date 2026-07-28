@@ -217,6 +217,7 @@ def build_agent(
     role: str | None = None,
     language: str = "en",
     provider: str | None = None,
+    session_slug: str | None = None,
 ):
     """Build and return the compiled LangGraph ReAct agent.
 
@@ -233,26 +234,44 @@ def build_agent(
 
     ``provider`` optionally selects an LLM provider (from providers/). When
     ``None``, the ``PROVIDER`` env var is read (falls back to ``"gemini"``).
+
+    ``session_slug`` optionally injects the cross-session project memory into the
+    prompt (so the agent remembers product/ICP/decisions from prior sessions)
+    and enables a persistent checkpointer keyed by the slug. When ``None``, the
+    agent runs stateless (no multi-turn history, no memory block).
     """
-    prompt = _compose_prompt(skill=skill, role=role, language=language)
+    prompt = _compose_prompt(skill=skill, role=role, language=language, session_slug=session_slug)
+    from . import session as session_mod
+
+    checkpointer = session_mod.get_checkpointer() if session_slug else None
     return create_react_agent(
         model=build_model(include_thoughts=include_thoughts, provider=provider),
         tools=ALL_TOOLS,
         prompt=prompt,
+        checkpointer=checkpointer,
     )
 
 
 def _compose_prompt(
-    skill: str | None, role: str | None = None, language: str = "en"
+    skill: str | None, role: str | None = None, language: str = "en",
+    session_slug: str | None = None,
 ) -> str:
     """Return the system prompt: Director base + (optional) role + (optional) skill."""
     is_english = language.lower().startswith("en")
     prompt = SYSTEM_PROMPT_EN if is_english else SYSTEM_PROMPT_ZH
 
+    # Cross-session memory: inject remembered facts so the agent has context.
+    if session_slug:
+        from . import session as session_mod
+
+        mem_block = session_mod.format_memory_context(session_slug, language)
+        if mem_block:
+            prompt += "\n\n" + mem_block
+
     if role:
         from . import roles_loader
 
-        found = roles_loader.find_role(role)
+        found = roles_loader.find_role(role, language)
         if found is not None:
             role_intro = (
                 "\n\nFor this session, adopt the following specialist role and let its "
