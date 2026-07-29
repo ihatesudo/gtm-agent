@@ -62,19 +62,21 @@ instead of "it depends."
 
 | | Capability | What it means in practice |
 |---|---|---|
-| 🎯 | **7 specialized roles** | Director + Paid Search, Social Ads, SEO, B2B/LinkedIn, Lifecycle & Retention, Growth Lead. Each has its own persona, focus, and instincts. |
-| 📚 | **47 skill playbooks** | Deep, step-by-step expertise — copywriting, ads, SEO audits, ABM, churn prevention, a legendary-marketers advisory board, and more. |
+| 🎯 | **9 roles** | Director, Growth Lead, Paid Search, Social Ads, SEO, B2B/LinkedIn, Lifecycle & Retention, Virtual Seth (intern mentor), Solo Founder (SMTM orchestrator). Each has its own persona, focus, and instincts. |
+| 📚 | **48 native + 25 external skills** | Deep playbooks — copywriting, ads, SEO audits, ABM, churn prevention — plus the 25-skill money-hxn "Show Me The Money" business suite, auto-discovered from an external path. |
 | 🧰 | **100+ platform integrations** | Reference guides for the tools real marketers use (Google Ads, GA4, Klaviyo, HubSpot, Apollo, Ahrefs, …), loaded on demand. |
 | 🧠 | **Layered prompting** | Director base → active role → active skill. Compose a specialist *with* a playbook for deep, focused execution. |
 | 💾 | **Deliverables on disk** | Final copy, strategies, keyword lists saved to `output/` as files — not lost in a chat scroll. |
-| 🔍 | **Grounded, not guessed** | Real-time facts (prices, competitor moves, keyword popularity) are searched before they're stated. |
-| 🇨🇳 | **Chinese-first** | Speaks your language; professional, specific, and to the point. |
+| 🗂️ | **Session + memory persistence** | `.sessions/` stores conversation history (SQLite checkpointer, survives restarts) + project memory (product, ICP, goals, decisions). Auto-resumes your last session; `/remember` + `/recall` tools let the agent save facts across sessions. |
+| 🔍 | **Grounded, not guessed** | Real-time facts (prices, competitor moves, keyword popularity) are searched before they're stated. The Virtual Seth role cites real blog posts via `lookup_seth_post`. |
+| 🌐 | **Bilingual (EN default)** | English by default; `/lang zh` (or `--language zh`) switches to Chinese. Every role ships as an `.en.yaml` + `.zh.yaml` pair. |
+| 🎬 | **CLI animations** | ASCII spinner, progress bars, streamed thinking blocks (💭) and tool-call progress (🔧) — terminal polish that makes the agent feel alive. |
 | 🔌 | **Bring-your-own model** | OpenRouter (default, free tier) or Vertex AI via service account (burns GCP trial credits). GLM via the Zhipu coding plan. |
 | ⚙️ | **Two runtimes, one brain** | [Python CLI](#quick-start) for terminal-first users + [Mastra engine](#mastra-campaign-orchestrator) for campaign workflow orchestration. Share the same roles, skills, and tool integrations. |
-| 🧩 | **Multi-turn conversations** | Mastra engine supports persistent chat sessions with memory of past turns. |
+| 🧩 | **Multi-turn conversations** | Both runtimes now support persistent chat sessions with memory of past turns. |
 | 🏗️ | **Campaign workflows** | Mastra engine runs structured 3-step plans: strategy → execution → review. |
 | 👔 | **Supervisor delegation** | Mastra engine's Director agent routes work to specialists automatically. |
-| 🧠 | **Cross-session memory** | Mastra engine remembers your product, ICP, brand voice, and past campaigns across sessions. |
+| 🧠 | **Cross-session memory** | Both runtimes remember your product, ICP, brand voice, and past campaigns across sessions. |
 | 🎨 | **Mastra Studio Web UI** | Full chat UI with model dropdown, role sidebar, campaign dashboard, thinking blocks, tool call visualization — shipped and customized. |
 
 ---
@@ -271,14 +273,16 @@ make setup     # uv sync — install dependencies
 make run       # interactive REPL — you're talking to the team
 ```
 
-For English-only agent instructions and responses in one-shot CLI mode, add
-`--language en` (for example: `uv run python -m marketing_agent --language en
---role seo "Audit this site structure"`). The Reflex app has the same per-session
-selector in its sidebar; Chinese (`zh`) remains the default.
+English is the default. Switch to Chinese with `--language zh` or the `/lang`
+REPL command:
 
 ```bash
-uv run python -m marketing_agent --language en --role seo "Audit this site structure"
+uv run python -m marketing_agent --language zh --role seo "审计这个站点结构"
+uv run python -m marketing_agent --role seo "Audit this site structure"   # English (default)
 ```
+
+Every role ships as a bilingual pair (`<name>.en.yaml` + `<name>.zh.yaml`);
+the loader picks the variant by language with an English fallback.
 
 ### Mastra engine: campaign orchestration
 
@@ -423,19 +427,37 @@ make role NAME=seo MSG="给我一份技术 SEO 审计清单"
 uv run python -m marketing_agent --role paid-search --skill ads "ROAS 目标怎么设"
 
 make roles      # browse roles
-make skills     # browse the 47 skill playbooks
+make skills     # browse the 48 native + 25 external skill playbooks
 ```
 
 ### REPL commands
 
 ```
+# Roles & skills
 /roles · /role [name|n] · /role-off     switch specialist roles
 /skills · /skill [name|n] · /skill-off  switch skill playbooks
+
+# Language
+/lang [en|zh]                           switch language (toggle if no arg); default en
+
+# Session & memory
+/sessions                               list saved sessions
+/session [slug|n]                       resume a session (most-recent auto-resumes on start)
+/session-new <title>                    create a new session
+/session-off                            go stateless (no memory)
+/remember key=val | key=val             save a fact (product=… icp=… goal=… decision=… notes=…)
+/recall                                 show everything remembered for this session
+
+# Providers & thinking
+/providers · /provider [name|n]         switch LLM provider
 /think · /think-on · /think-off         toggle the streamed reasoning trace
+
 /help · /quit
 ```
 
-Role and skill are re-resolved per task, so switching takes effect on the next prompt.
+Role, skill, language, and session are re-resolved per task, so switching takes
+effect on the next prompt. CLI flags mirror these: `--role`, `--skill`,
+`--language`, `--session SLUG`, `--new-session TITLE`, `--provider`.
 
 ---
 
@@ -460,7 +482,7 @@ The team metaphor is the foundation; here's where it's headed.
 **Later / exploring**
 - **Human-in-the-loop checkpoints** for anything spending money or sending to
   customers.
-- **Multilingual expansion** beyond Chinese-first.
+- **Multilingual expansion** — English is now the default, with `/lang zh` switching to Chinese.
 - **A "marketing council" live mode** — multiple advisors debating a decision in
   real time before you commit.
 
@@ -478,7 +500,7 @@ This repo ships **two runtimes** that share the same roles, skills, and platform
 | **Directory** | `marketing_agent/` | `mastra/` |
 | **Language** | Python (LangGraph) | TypeScript (Mastra) |
 | **Best for** | Quick one-shot tasks, REPL sessions | Multi-turn conversations, campaign orchestration, Studio UI |
-| **Memory** | Per-session only | Cross-session project memory |
+| **Memory** | `.sessions/` (SQLite checkpointer + JSON project memory, survives restarts) | LibSQL/Turso (cross-session project memory) |
 | **Delegation** | Manual `/role` switching | Automatic Director → specialist routing |
 | **Workflows** | — | Structured campaign plans (strategy → execute → review) |
 
@@ -492,9 +514,12 @@ Both share `roles/`, `skills/`, and `tools/` from this repo — there's no fork 
 
 ```
 marketing_agent/agent.py       LangGraph ReAct agent — SYSTEM_PROMPT is the Director
-marketing_agent/tools.py       7 callable tools (web_search, save_asset, …)
-roles/                         One YAML per specialist role
-skills/                        47 marketing skill playbooks
+marketing_agent/tools.py       11 callable tools (web_search, save_asset, lookup_seth_post, remember, recall, …)
+marketing_agent/session.py     Session + memory (SQLite checkpointer + JSON project memory)
+marketing_agent/asciimotion.py CLI ASCII animations (spinner, progress bar, banner)
+roles/                         Bilingual role pairs: <name>.{en,zh}.yaml (9 roles)
+skills/                        48 native marketing skill playbooks
+~/tools/skills/money-hxn/      25 external SMTM business skills (auto-discovered)
 tools/REGISTRY.md              ~100 platform integration guides (loaded on demand)
 ```
 
@@ -569,6 +594,55 @@ For now:
 ```bash
 make clean     # remove .venv and build artifacts
 ```
+
+---
+
+## Testing
+
+The Python CLI has a full test suite (168 tests) covering tools, prompt
+composition, session/memory, the agent graph, roles, and animations. Run it with:
+
+```bash
+uv run pytest tests/                  # full suite
+uv run pytest tests/test_tools.py     # one file
+uv run pytest tests/ -k "session"     # by keyword
+```
+
+Tests use **no API keys and no network**. The agent-graph integration tests drive
+the real ReAct loop with a `ToolBindingFakeChatModel` (a `GenericFakeChatModel`
+subclass that survives `bind_tools`), so real tools execute with zero LLM calls.
+
+> **Note:** `make test` runs the **Mastra Studio** test mode (a built UI on
+> `:4111`), not the Python tests. The Python tests are run via `uv run pytest`.
+
+Test files:
+
+| File | Covers |
+|---|---|
+| `test_tools.py` | All 11 `@tool` functions (assets, web_search, skills, Seth, memory) |
+| `test_agent_compose.py` | Prompt composition + full agent-graph integration (fake model) |
+| `test_roles.py` | Bilingual role resolution + `render_role_block` label switching |
+| `test_session.py` | Session registry, project memory, checkpointer fallback |
+| `test_skills_external.py` | External skill discovery (money-hxn) + collision dedup |
+| `test_asciimotion.py` | CLI animations (frame data, spinner, progress bar) |
+| `test_providers_loader.py` | Provider YAML discovery + lookup |
+| `test_streaming.py` / `test_render_response.py` | Streamed output rendering |
+
+---
+
+## Design docs
+
+Substantial design rationale lives in `docs/`:
+
+| Doc | What it covers |
+|---|---|
+| [`virtual-seth-godin.md`](docs/virtual-seth-godin.md) | The Virtual Seth mentor — corpus mining, five-link chain, citation grounding |
+| [`money-hxn-integration-plan.md`](docs/money-hxn-integration-plan.md) | How the 25-skill SMTM suite becomes the `founder` role via external discovery |
+| [`agency-creative-frameworks.md`](docs/agency-creative-frameworks.md) | 5A agency creative methods (BBDO, Ogilvy, TBWA, DDB, Saatchi, Effie) |
+| [`email-platform-recommendation.md`](docs/email-platform-recommendation.md) | Free/OSS email stack (Postal + MJML) for Outlook+Gmail rendering + auto-reply |
+| [`gtm-agent-evolution-plan.md`](docs/gtm-agent-evolution-plan.md) | The roadmap (phases, what's done, what's next) |
+| [`requirements-v2.md`](docs/requirements-v2.md) | The v2 product requirements |
+| [`technical-decision-record.md`](docs/technical-decision-record.md) | Key architectural decisions |
 
 ---
 

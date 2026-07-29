@@ -1,5 +1,11 @@
 # Overnight Progress Report — 2026-07-29
 
+> **Update:** all items below are now **built and committed**. The test suite
+> grew to 168 tests (from 86) with full agent-graph integration testing via a
+> mocked LLM. See the git log for `cf63cd8` (tests), `9e3acad` (money-hxn +
+> founder role), `b1a77d3` (session/memory + animations + docs). This report is
+> kept as the original assessment; the "done" items are now in the README.
+
 You asked me to: (1) find 5A agency creative skills, (2) add email data
 collection, (3) add session/memory, (4) add CLI animations + tests, (5) integrate
 money-hxn without losing the agent's taste. Here's the honest scorecard before
