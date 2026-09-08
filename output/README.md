@@ -40,6 +40,15 @@
 | **Role · 角色** | Director / Growth Lead |
 | **Skills · 技能** | product-marketing, customer-research, content-strategy, emails, social (reverse-engineering) |
 
+### 4. [TikTok / Instagram 公开爆款挖掘：CLI 抓取工具 + 免费数据源调研](./tiktok-instagram-viral-scraping-tools-and-free-data-sources.md)
+
+| | |
+|---|---|
+| **EN** | A tooling research memo for organic TikTok/Instagram trend mining: CLI scrapers (yt-dlp, TikTokApi, Instaloader, gallery-dl, insta-dl) vs. free official data sources (TikTok Creative Center, Meta Ad Library, Research API/Content Library academic access, Google Trends), with a cost/risk/completeness tradeoff table and a compliant weekly research workflow. |
+| **中文** | 一份面向 TikTok/Instagram 有机爆款挖掘的工具调研备忘录：对比 CLI 抓取工具（yt-dlp、TikTokApi、Instaloader、gallery-dl、insta-dl）与免费官方数据源（TikTok Creative Center、Meta Ad Library、Research API/Content Library 学术准入、Google Trends），给出成本/风险/完整度权衡表与合规的周度调研工作流。 |
+| **Role · 角色** | Social Ads / Content |
+| **Skills · 技能** | social (reverse-engineering), competitor-profiling |
+
 ---
 
 ## Reproduce · 如何复现
